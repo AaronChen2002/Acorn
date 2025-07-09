@@ -11,10 +11,9 @@ import {
   SafeAreaView,
   Dimensions,
 } from 'react-native';
-import { CategorySelector } from './CategorySelector';
 import { TagInput } from './TagInput';
 import { CalendarTimeEntry, TimeSlot, ActivityCreationData, EMOTIONAL_TAGS, MOOD_RATINGS, formatTimeSlot } from '../types/calendar';
-import { THEME } from '../constants';
+import { useTheme } from '../utils/theme';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -27,19 +26,6 @@ interface ActivityCreationModalProps {
   onDelete?: () => void;
 }
 
-// Warm colors for the modal
-const MODAL_COLORS = {
-  primary: '#6366f1',
-  primaryLight: '#a5b4fc',
-  success: '#10b981',
-  warning: '#f59e0b',
-  background: '#ffffff',
-  surface: '#f8fafc',
-  text: '#1e293b',
-  textSecondary: '#64748b',
-  border: '#e2e8f0',
-};
-
 export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
   isVisible,
   selectedTimeSlot,
@@ -48,8 +34,8 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
   onCancel,
   onDelete,
 }) => {
+  const { theme } = useTheme();
   const [activity, setActivity] = useState('');
-  const [category, setCategory] = useState('deep-work');
   const [moodRating, setMoodRating] = useState<number | undefined>(undefined);
   const [selectedEmotionalTags, setSelectedEmotionalTags] = useState<string[]>([]);
   const [reflection, setReflection] = useState('');
@@ -61,7 +47,6 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
   useEffect(() => {
     if (editingEntry) {
       setActivity(editingEntry.activity);
-      setCategory(editingEntry.category);
       setMoodRating(editingEntry.moodRating);
       setSelectedEmotionalTags(editingEntry.emotionalTags || []);
       setReflection(editingEntry.reflection || '');
@@ -72,7 +57,6 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
 
   const resetForm = () => {
     setActivity('');
-    setCategory('deep-work');
     setMoodRating(undefined);
     setSelectedEmotionalTags([]);
     setReflection('');
@@ -108,7 +92,7 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
     try {
       const activityData: ActivityCreationData = {
         activity: activity.trim(),
-        category,
+        category: 'general', // Default category - will be auto-categorized later
         moodRating,
         emotionalTags: selectedEmotionalTags,
         reflection: reflection.trim() || undefined,
@@ -183,6 +167,182 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
     return 'No time selected';
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: theme.spacing.lg,
+    },
+    header: {
+      marginBottom: theme.spacing.lg,
+      alignItems: 'center',
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.colors.text,
+      marginBottom: theme.spacing.xs,
+    },
+    timeSlot: {
+      fontSize: 16,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    section: {
+      marginBottom: theme.spacing.lg,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginBottom: theme.spacing.sm,
+    },
+    optional: {
+      fontSize: 14,
+      fontWeight: '400',
+      color: theme.colors.textSecondary,
+    },
+    activityInput: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.md,
+      fontSize: 16,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.background,
+      textAlignVertical: 'top',
+    },
+    moodGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
+    },
+    moodButton: {
+      flex: 1,
+      minWidth: 100,
+      alignItems: 'center',
+      padding: theme.spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.md,
+      backgroundColor: theme.colors.surface,
+    },
+    moodButtonSelected: {
+      backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary,
+    },
+    moodEmoji: {
+      fontSize: 24,
+      marginBottom: theme.spacing.xs,
+    },
+    moodLabel: {
+      fontSize: 12,
+      color: theme.colors.text,
+      fontWeight: '600',
+    },
+    moodLabelSelected: {
+      color: theme.colors.background,
+    },
+    tagsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
+    },
+    tagButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: theme.spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.lg,
+      backgroundColor: theme.colors.surface,
+    },
+    tagButtonSelected: {
+      backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary,
+    },
+    tagEmoji: {
+      fontSize: 16,
+      marginRight: theme.spacing.xs,
+    },
+    tagLabel: {
+      fontSize: 14,
+      color: theme.colors.text,
+      fontWeight: '500',
+    },
+    tagLabelSelected: {
+      color: theme.colors.background,
+    },
+    reflectionInput: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.md,
+      fontSize: 16,
+      color: theme.colors.text,
+      backgroundColor: theme.colors.background,
+      textAlignVertical: 'top',
+      minHeight: 100,
+    },
+    actions: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: theme.spacing.lg,
+      gap: theme.spacing.md,
+    },
+    cancelButton: {
+      flex: 1,
+      paddingVertical: theme.spacing.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.md,
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+    },
+    cancelButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    deleteButton: {
+      flex: 1,
+      paddingVertical: theme.spacing.md,
+      borderWidth: 1,
+      borderColor: theme.colors.error,
+      borderRadius: theme.borderRadius.md,
+      alignItems: 'center',
+      backgroundColor: `${theme.colors.error}20`,
+    },
+    deleteButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.error,
+    },
+    saveButton: {
+      flex: 1,
+      paddingVertical: theme.spacing.md,
+      borderRadius: theme.borderRadius.md,
+      alignItems: 'center',
+      backgroundColor: theme.colors.primary,
+    },
+    saveButtonDisabled: {
+      backgroundColor: theme.colors.textSecondary,
+    },
+    saveButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.background,
+    },
+  });
+
   return (
     <Modal
       animationType="slide"
@@ -215,21 +375,14 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
                 value={activity}
                 onChangeText={setActivity}
                 placeholder="e.g., Team standup, Deep work on project X, Lunch break..."
-                placeholderTextColor={MODAL_COLORS.textSecondary}
+                placeholderTextColor={theme.colors.textSecondary}
                 multiline
                 numberOfLines={2}
                 maxLength={100}
               />
             </View>
 
-            {/* Category Selection */}
-            <View style={styles.section}>
-              <CategorySelector
-                selectedCategory={category}
-                onCategorySelect={setCategory}
-                label="Activity Category"
-              />
-            </View>
+
 
             {/* Mood Rating */}
             <View style={styles.section}>
@@ -300,7 +453,7 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
                 value={reflection}
                 onChangeText={setReflection}
                 placeholder="Any thoughts about this activity? What went well? What could be improved?"
-                placeholderTextColor={MODAL_COLORS.textSecondary}
+                placeholderTextColor={theme.colors.textSecondary}
                 multiline
                 numberOfLines={4}
                 maxLength={500}
@@ -342,180 +495,4 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
       </View>
     </Modal>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: MODAL_COLORS.background,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: THEME.spacing.lg,
-  },
-  header: {
-    marginBottom: THEME.spacing.lg,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: MODAL_COLORS.text,
-    marginBottom: THEME.spacing.xs,
-  },
-  timeSlot: {
-    fontSize: 16,
-    color: MODAL_COLORS.primary,
-    fontWeight: '600',
-  },
-  section: {
-    marginBottom: THEME.spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: MODAL_COLORS.text,
-    marginBottom: THEME.spacing.sm,
-  },
-  optional: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: MODAL_COLORS.textSecondary,
-  },
-  activityInput: {
-    borderWidth: 1,
-    borderColor: MODAL_COLORS.border,
-    borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.md,
-    fontSize: 16,
-    color: MODAL_COLORS.text,
-    backgroundColor: MODAL_COLORS.background,
-    textAlignVertical: 'top',
-  },
-  moodGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: THEME.spacing.sm,
-  },
-  moodButton: {
-    flex: 1,
-    minWidth: 100,
-    alignItems: 'center',
-    padding: THEME.spacing.sm,
-    borderWidth: 1,
-    borderColor: MODAL_COLORS.border,
-    borderRadius: THEME.borderRadius.md,
-    backgroundColor: MODAL_COLORS.surface,
-  },
-  moodButtonSelected: {
-    backgroundColor: MODAL_COLORS.primary,
-    borderColor: MODAL_COLORS.primary,
-  },
-  moodEmoji: {
-    fontSize: 24,
-    marginBottom: THEME.spacing.xs,
-  },
-  moodLabel: {
-    fontSize: 12,
-    color: MODAL_COLORS.text,
-    fontWeight: '600',
-  },
-  moodLabelSelected: {
-    color: 'white',
-  },
-  tagsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: THEME.spacing.sm,
-  },
-  tagButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: THEME.spacing.sm,
-    borderWidth: 1,
-    borderColor: MODAL_COLORS.border,
-    borderRadius: THEME.borderRadius.lg,
-    backgroundColor: MODAL_COLORS.surface,
-  },
-  tagButtonSelected: {
-    backgroundColor: MODAL_COLORS.primary,
-    borderColor: MODAL_COLORS.primary,
-  },
-  tagEmoji: {
-    fontSize: 16,
-    marginRight: THEME.spacing.xs,
-  },
-  tagLabel: {
-    fontSize: 14,
-    color: MODAL_COLORS.text,
-    fontWeight: '500',
-  },
-  tagLabelSelected: {
-    color: 'white',
-  },
-  reflectionInput: {
-    borderWidth: 1,
-    borderColor: MODAL_COLORS.border,
-    borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.md,
-    fontSize: 16,
-    color: MODAL_COLORS.text,
-    backgroundColor: MODAL_COLORS.background,
-    textAlignVertical: 'top',
-    minHeight: 100,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: THEME.spacing.lg,
-    gap: THEME.spacing.md,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: THEME.spacing.md,
-    borderWidth: 1,
-    borderColor: MODAL_COLORS.border,
-    borderRadius: THEME.borderRadius.md,
-    alignItems: 'center',
-    backgroundColor: MODAL_COLORS.surface,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: MODAL_COLORS.text,
-  },
-  deleteButton: {
-    flex: 1,
-    paddingVertical: THEME.spacing.md,
-    borderWidth: 1,
-    borderColor: '#ef4444',
-    borderRadius: THEME.borderRadius.md,
-    alignItems: 'center',
-    backgroundColor: '#fef2f2',
-  },
-  deleteButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ef4444',
-  },
-  saveButton: {
-    flex: 1,
-    paddingVertical: THEME.spacing.md,
-    borderRadius: THEME.borderRadius.md,
-    alignItems: 'center',
-    backgroundColor: MODAL_COLORS.primary,
-  },
-  saveButtonDisabled: {
-    backgroundColor: MODAL_COLORS.textSecondary,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
-  },
-}); 
+}; 

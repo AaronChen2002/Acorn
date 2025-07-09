@@ -3,20 +3,30 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useAppStore } from '../stores/appStore';
 import { useCalendarStore } from '../stores/calendarStore';
 import { CalendarGrid } from '../components/CalendarGrid';
+import { CalendarWeekView } from '../components/CalendarWeekView';
+import { CalendarMonthView } from '../components/CalendarMonthView';
+import { ViewModeSwitcher } from '../components/ViewModeSwitcher';
+import { CalendarHeader } from '../components/CalendarHeader';
 import { ActivityCreationModal } from '../components/ActivityCreationModal';
-import { CalendarTimeEntry, TimeSlot, ActivityCreationData, createTimeSlot } from '../types/calendar';
-import { THEME } from '../constants';
+import { CalendarTimeEntry, TimeSlot, ActivityCreationData, createTimeSlot, ViewMode } from '../types/calendar';
+import { useTheme } from '../utils/theme';
 
 export const TimeTrackingScreen: React.FC = () => {
   const addTimeEntry = useAppStore((state) => state.addTimeEntry);
+  const { theme, isDark, toggleTheme } = useTheme();
   
   const {
     selectedDate,
     timeEntries,
     selection,
+    viewMode,
     isActivityModalVisible,
     editingEntry,
     setSelectedDate,
+    setViewMode,
+    navigateToDate,
+    navigatePrevious,
+    navigateNext,
     startSelection,
     updateSelection,
     clearSelection,
@@ -30,13 +40,31 @@ export const TimeTrackingScreen: React.FC = () => {
 
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
 
-  // Format today's date for display
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString([], { 
-      weekday: 'long', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+  // Handle view mode changes
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+  };
+
+  // Handle navigation
+  const handlePreviousPress = () => {
+    navigatePrevious();
+  };
+
+  const handleNextPress = () => {
+    navigateNext();
+  };
+
+  const handleTodayPress = () => {
+    navigateToDate(new Date());
+  };
+
+  // Handle date selection from different views
+  const handleDatePress = (date: Date) => {
+    if (viewMode === 'month' || viewMode === 'week') {
+      // Switch to day view when selecting a date from month/week view
+      setViewMode('day');
+    }
+    navigateToDate(date);
   };
 
   // Handle time slot press (single tap)
@@ -155,23 +183,106 @@ export const TimeTrackingScreen: React.FC = () => {
     return selectedTimeSlot;
   };
 
+  const renderCalendarView = () => {
+    switch (viewMode) {
+      case 'day':
+        return (
+          <CalendarGrid
+            date={selectedDate}
+            timeEntries={timeEntries}
+            selection={selection}
+            onTimeSlotPress={handleTimeSlotPress}
+            onTimeSlotDrag={handleTimeSlotDrag}
+            onDragComplete={handleDragComplete}
+            onEntryPress={handleTimeEntryPress}
+          />
+        );
+      case 'week':
+        return (
+          <CalendarWeekView
+            selectedDate={selectedDate}
+            timeEntries={timeEntries}
+            selection={selection}
+            onTimeSlotPress={handleTimeSlotPress}
+            onTimeSlotDrag={handleTimeSlotDrag}
+            onDragComplete={handleDragComplete}
+            onEntryPress={handleTimeEntryPress}
+            onDatePress={handleDatePress}
+          />
+        );
+      case 'month':
+        return (
+          <CalendarMonthView
+            selectedDate={selectedDate}
+            timeEntries={timeEntries}
+            onDatePress={handleDatePress}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    header: {
+      padding: theme.spacing.lg,
+      backgroundColor: theme.colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: theme.colors.text,
+    },
+    themeToggle: {
+      padding: theme.spacing.sm,
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.borderRadius.sm,
+    },
+    themeToggleText: {
+      color: theme.colors.background,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    calendarContainer: {
+      flex: 1,
+    },
+  });
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Time Tracking</Text>
-        <Text style={styles.subtitle}>{formatDate(selectedDate)}</Text>
+        <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
+          <Text style={styles.themeToggleText}>
+            {isDark ? '☀️' : '🌙'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
+      <ViewModeSwitcher
+        currentMode={viewMode}
+        onModeChange={handleViewModeChange}
+      />
+
+      <CalendarHeader
+        selectedDate={selectedDate}
+        viewMode={viewMode}
+        onPreviousPress={handlePreviousPress}
+        onNextPress={handleNextPress}
+        onTodayPress={handleTodayPress}
+      />
+
       <View style={styles.calendarContainer}>
-        <CalendarGrid
-          date={selectedDate}
-          timeEntries={timeEntries}
-          selection={selection}
-          onTimeSlotPress={handleTimeSlotPress}
-          onTimeSlotDrag={handleTimeSlotDrag}
-          onDragComplete={handleDragComplete}
-          onEntryPress={handleTimeEntryPress}
-        />
+        {renderCalendarView()}
       </View>
 
       <ActivityCreationModal
@@ -184,31 +295,4 @@ export const TimeTrackingScreen: React.FC = () => {
       />
     </View>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: THEME.colors.background,
-  },
-  header: {
-    padding: THEME.spacing.lg,
-    backgroundColor: THEME.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: THEME.colors.text,
-    marginBottom: THEME.spacing.xs,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: THEME.colors.textSecondary,
-    fontWeight: '500',
-  },
-  calendarContainer: {
-    flex: 1,
-  },
-}); 
+}; 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import { THEME } from '../constants';
+import { useTheme } from '../utils/theme';
 import { HamburgerButton } from './HamburgerButton';
 import { SideMenu } from './SideMenu';
 
@@ -9,40 +9,11 @@ interface TopNavigationProps {
   onScreenChange: (screen: string) => void;
 }
 
-const getScreenTitle = (screen: string): string => {
-  switch (screen) {
-    case 'timetracking':
-      return 'Time Tracking';
-    case 'checkin':
-      return 'Check-ins';
-    case 'reflection':
-      return 'Reflections';
-    case 'morning':
-      return 'Morning Ritual';
-    default:
-      return 'Acorn';
-  }
-};
-
-const getScreenSubtitle = (screen: string): string => {
-  switch (screen) {
-    case 'timetracking':
-      return 'Focus on what matters most';
-    case 'checkin':
-      return 'Track your emotional wellness';
-    case 'reflection':
-      return 'Reflect on your day';
-    case 'morning':
-      return 'Start your day mindfully';
-    default:
-      return 'Your mindful companion';
-  }
-};
-
 export const TopNavigation: React.FC<TopNavigationProps> = ({
   currentScreen,
   onScreenChange,
 }) => {
+  const { theme } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleMenuToggle = () => {
@@ -58,6 +29,54 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
     setIsMenuOpen(false);
   };
 
+  const styles = StyleSheet.create({
+    safeArea: {
+      backgroundColor: theme.colors.background,
+    },
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+      backgroundColor: theme.colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      minHeight: 64,
+    },
+    leftSection: {
+      width: 44,
+      alignItems: 'flex-start',
+    },
+    centerSection: {
+      flex: 1,
+      alignItems: 'center',
+      marginHorizontal: theme.spacing.md,
+      flexDirection: 'row',
+      justifyContent: 'center',
+    },
+    rightSection: {
+      width: 44,
+      alignItems: 'flex-end',
+    },
+    logo: {
+      fontSize: 24,
+      marginRight: theme.spacing.xs,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 2,
+    },
+  });
+
   return (
     <>
       <SafeAreaView style={styles.safeArea}>
@@ -70,13 +89,11 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
             />
           </View>
 
-          {/* Center - Title */}
+          {/* Center - Acorn Logo + Title */}
           <View style={styles.centerSection}>
+            <Text style={styles.logo}>🌰</Text>
             <Text style={styles.title} numberOfLines={1}>
-              {getScreenTitle(currentScreen)}
-            </Text>
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {getScreenSubtitle(currentScreen)}
+              Acorn
             </Text>
           </View>
 
@@ -95,46 +112,4 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
       />
     </>
   );
-};
-
-const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: THEME.colors.background,
-  },
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: THEME.spacing.lg,
-    paddingVertical: THEME.spacing.md,
-    backgroundColor: THEME.colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
-    minHeight: 64,
-  },
-  leftSection: {
-    width: 44,
-    alignItems: 'flex-start',
-  },
-  centerSection: {
-    flex: 1,
-    alignItems: 'center',
-    marginHorizontal: THEME.spacing.md,
-  },
-  rightSection: {
-    width: 44,
-    alignItems: 'flex-end',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: THEME.colors.text,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: THEME.colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 2,
-  },
-}); 
+}; 

@@ -44,11 +44,15 @@ export interface Insight {
 export interface MorningCheckInData {
   id: string;
   date: string; // YYYY-MM-DD format
-  energyLevel: number; // 1-10 scale
-  positivityLevel: number; // 1-10 scale
+  energyLevel: number; // 1-5 scale
+  positivityLevel: number; // 1-5 scale
+  focusLevel: number; // 1-5 scale
+  sleepQuality: number; // 1-5 scale
+  yesterdayCompletion: number; // 1-5 scale
   emotions: string[]; // Array of emotion keys
   reflectionPrompt: string; // The prompt shown to user
   reflectionResponse: string; // User's response to prompt
+  mainGoal: string; // Main goal for today
   notes?: string; // Optional additional notes
   completedAt: Date; // When the check-in was completed
 }

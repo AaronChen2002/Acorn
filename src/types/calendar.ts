@@ -32,15 +32,20 @@ export interface CalendarSelection {
   selectedSlots: TimeSlot[];
 }
 
+export type ViewMode = 'day' | 'week' | 'month';
+
 export interface CalendarState {
   // Current date being viewed
   selectedDate: Date;
   
-  // Time entries for the current date
+  // Time entries for the current date/week/month
   timeEntries: CalendarTimeEntry[];
   
   // Current selection state
   selection: CalendarSelection | null;
+  
+  // View mode state (Phase 7.1)
+  viewMode: ViewMode;
   
   // UI state
   isActivityModalVisible: boolean;
@@ -148,4 +153,98 @@ export const checkTimeConflict = (newEntry: { startTime: Date; endTime: Date }, 
     // Check if there's any overlap
     return (newStart < existingEnd && newEnd > existingStart);
   });
+};
+
+// Date utility functions for different view modes (Phase 7.1)
+export const getWeekStart = (date: Date): Date => {
+  const start = new Date(date);
+  const day = start.getDay();
+  const diff = start.getDate() - day; // Sunday is 0, Monday is 1, etc.
+  start.setDate(diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+};
+
+export const getWeekEnd = (date: Date): Date => {
+  const end = new Date(getWeekStart(date));
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+};
+
+export const getWeekDates = (date: Date): Date[] => {
+  const start = getWeekStart(date);
+  const dates: Date[] = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + i);
+    dates.push(day);
+  }
+  
+  return dates;
+};
+
+export const getMonthStart = (date: Date): Date => {
+  const start = new Date(date);
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  return start;
+};
+
+export const getMonthEnd = (date: Date): Date => {
+  const end = new Date(date);
+  end.setMonth(end.getMonth() + 1);
+  end.setDate(0);
+  end.setHours(23, 59, 59, 999);
+  return end;
+};
+
+export const getMonthDates = (date: Date): Date[] => {
+  const start = getMonthStart(date);
+  const end = getMonthEnd(date);
+  const dates: Date[] = [];
+  
+  // Add dates from previous month to fill first week
+  const firstDay = start.getDay();
+  const prevMonth = new Date(start);
+  prevMonth.setMonth(prevMonth.getMonth() - 1);
+  const prevMonthEnd = getMonthEnd(prevMonth);
+  
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const date = new Date(prevMonthEnd);
+    date.setDate(prevMonthEnd.getDate() - i);
+    dates.push(date);
+  }
+  
+  // Add all dates of current month
+  const currentMonth = start.getMonth();
+  let currentDate = new Date(start);
+  
+  while (currentDate.getMonth() === currentMonth) {
+    dates.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  // Add dates from next month to fill last week (up to 42 days total)
+  while (dates.length < 42) {
+    dates.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return dates;
+};
+
+export const formatWeekRange = (date: Date): string => {
+  const start = getWeekStart(date);
+  const end = getWeekEnd(date);
+  
+  const startStr = start.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const endStr = end.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  
+  return `${startStr} - ${endStr}`;
+};
+
+export const formatMonthYear = (date: Date): string => {
+  return date.toLocaleDateString([], { month: 'long', year: 'numeric' });
 }; 

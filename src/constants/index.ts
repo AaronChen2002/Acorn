@@ -71,8 +71,8 @@ export const DAILY_PROMPTS = [
   "How are you growing or changing lately, and what support do you need for that process?",
 ];
 
-// App theme
-export const THEME: AppTheme = {
+// Light theme
+export const LIGHT_THEME: AppTheme = {
   colors: {
     primary: '#6366f1', // Indigo
     secondary: '#06b6d4', // Cyan
@@ -98,6 +98,40 @@ export const THEME: AppTheme = {
     lg: 16,
   },
 };
+
+// Dark theme (Google Calendar inspired)
+export const DARK_THEME: AppTheme = {
+  colors: {
+    primary: '#5b82f3', // Slightly lighter blue for better contrast
+    secondary: '#06d6f1', // Cyan adjusted for dark mode
+    background: '#0f172a', // Very dark blue-gray (like Google Calendar)
+    surface: '#1e293b', // Dark surface color
+    text: '#f8fafc', // Light text for readability
+    textSecondary: '#94a3b8', // Muted light gray for secondary text
+    border: '#334155', // Subtle border color
+    success: '#22c55e', // Slightly brighter green
+    warning: '#fbbf24', // Adjusted amber
+    error: '#f87171', // Softer red
+  },
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+  },
+  borderRadius: {
+    sm: 4,
+    md: 8,
+    lg: 16,
+  },
+};
+
+// Default theme (can be switched)
+export const THEME = LIGHT_THEME;
+
+// Theme selector function
+export const getTheme = (isDark: boolean) => isDark ? DARK_THEME : LIGHT_THEME;
 
 // Database configuration
 export const DB_CONFIG = {

@@ -9,43 +9,54 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import { CalendarTimeEntry, CalendarSelection, TimeSlot, generateTimeSlots } from '../types/calendar';
+import { CalendarTimeEntry, CalendarSelection, TimeSlot, generateTimeSlots, getWeekDates, formatTimeSlot } from '../types/calendar';
 import { useTheme } from '../utils/theme';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
-interface CalendarGridProps {
-  date: Date;
+interface CalendarWeekViewProps {
+  selectedDate: Date;
   timeEntries: CalendarTimeEntry[];
   selection: CalendarSelection | null;
   onTimeSlotPress: (time: Date) => void;
   onTimeSlotDrag: (startTime: Date, endTime: Date) => void;
   onDragComplete: (startTime: Date, endTime: Date) => void;
   onEntryPress: (entry: CalendarTimeEntry) => void;
+  onDatePress: (date: Date) => void;
 }
 
-const SLOT_HEIGHT = 60; // Height of each 15-minute slot
-const HOUR_SLOTS = 4; // Number of 15-minute slots per hour
-const TIME_LABEL_WIDTH = 80;
+const SLOT_HEIGHT = 40; // Smaller slots for week view
+const HOUR_SLOTS = 4; // 4 slots per hour (15-minute increments)
+const TIME_LABEL_WIDTH = 60;
+const DAY_COLUMN_WIDTH = (screenWidth - TIME_LABEL_WIDTH) / 7;
 const GRID_START_HOUR = 6;
 const GRID_END_HOUR = 23;
 
-export const CalendarGrid: React.FC<CalendarGridProps> = ({
-  date,
+export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
+  selectedDate,
   timeEntries,
   selection,
   onTimeSlotPress,
   onTimeSlotDrag,
   onDragComplete,
   onEntryPress,
+  onDatePress,
 }) => {
   const { theme } = useTheme();
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<Date | null>(null);
   const [dragCurrent, setDragCurrent] = useState<Date | null>(null);
+  const [dragDay, setDragDay] = useState<Date | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const timeSlots = generateTimeSlots(date, GRID_START_HOUR, GRID_END_HOUR, 15);
+  const weekDates = getWeekDates(selectedDate);
+  const timeSlots = generateTimeSlots(new Date(), GRID_START_HOUR, GRID_END_HOUR, 15);
+
+  // Get time entries for a specific date
+  const getTimeEntriesForDate = (date: Date): CalendarTimeEntry[] => {
+    const dateKey = date.toISOString().split('T')[0];
+    return timeEntries.filter(entry => entry.date === dateKey);
+  };
 
   const getTimeFromY = (y: number): Date => {
     const slotIndex = Math.floor(y / SLOT_HEIGHT);
@@ -60,10 +71,17 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     return (totalMinutes / 15) * SLOT_HEIGHT;
   };
 
+  const getDayFromX = (x: number): Date => {
+    const dayIndex = Math.floor(x / DAY_COLUMN_WIDTH);
+    const boundedIndex = Math.max(0, Math.min(dayIndex, weekDates.length - 1));
+    return weekDates[boundedIndex];
+  };
+
   // Snap time to nearest 15-minute increment
-  const snapToSlot = (time: Date): Date => {
-    const snapped = new Date(time);
-    const minutes = snapped.getMinutes();
+  const snapToSlot = (time: Date, day: Date): Date => {
+    const snapped = new Date(day);
+    snapped.setHours(time.getHours());
+    const minutes = time.getMinutes();
     const snappedMinutes = Math.round(minutes / 15) * 15;
     snapped.setMinutes(snappedMinutes, 0, 0);
     return snapped;
@@ -77,18 +95,23 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     },
     
     onPanResponderGrant: (evt) => {
-      const { locationY } = evt.nativeEvent;
-      const startTime = snapToSlot(getTimeFromY(locationY));
+      const { locationX, locationY } = evt.nativeEvent;
+      const day = getDayFromX(locationX - TIME_LABEL_WIDTH);
+      const time = getTimeFromY(locationY);
+      const startTime = snapToSlot(time, day);
+      
       setDragStart(startTime);
       setDragCurrent(startTime);
+      setDragDay(day);
       setIsDragging(true);
     },
     
     onPanResponderMove: (evt) => {
-      if (!dragStart || !isDragging) return;
+      if (!dragStart || !dragDay || !isDragging) return;
       
       const { locationY } = evt.nativeEvent;
-      const currentTime = snapToSlot(getTimeFromY(locationY));
+      const time = getTimeFromY(locationY);
+      const currentTime = snapToSlot(time, dragDay);
       setDragCurrent(currentTime);
       
       // Update visual selection during drag
@@ -96,7 +119,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     },
     
     onPanResponderRelease: () => {
-      if (dragStart && dragCurrent && isDragging) {
+      if (dragStart && dragCurrent && dragDay && isDragging) {
         // Ensure proper start/end ordering
         const startTime = dragStart < dragCurrent ? dragStart : dragCurrent;
         const endTime = dragStart < dragCurrent ? dragCurrent : dragStart;
@@ -111,12 +134,14 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
       setIsDragging(false);
       setDragStart(null);
       setDragCurrent(null);
+      setDragDay(null);
     },
     
     onPanResponderTerminate: () => {
       setIsDragging(false);
       setDragStart(null);
       setDragCurrent(null);
+      setDragDay(null);
     },
   });
 
@@ -138,71 +163,34 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     });
   };
 
+  const formatDayHeader = (date: Date): string => {
+    const isToday = date.toDateString() === new Date().toDateString();
+    const dayName = date.toLocaleDateString([], { weekday: 'short' });
+    const dayNumber = date.getDate();
+    
+    return `${dayName} ${dayNumber}`;
+  };
+
   const isCurrentTime = (time: Date): boolean => {
     const now = new Date();
     const timeDiff = Math.abs(now.getTime() - time.getTime());
     return timeDiff < 15 * 60 * 1000; // Within 15 minutes
   };
 
-  const isTimeSlotSelected = (time: Date): boolean => {
-    // Check if this slot is in the current selection
-    if (selection) {
-      const slotStart = time.getTime();
-      const selectionStart = selection.startTime.getTime();
-      const selectionEnd = selection.endTime.getTime();
-      
-      return slotStart >= Math.min(selectionStart, selectionEnd) && 
-             slotStart < Math.max(selectionStart, selectionEnd);
-    }
-    
+  const isTimeSlotSelected = (time: Date, day: Date): boolean => {
     // Check if this slot is in the current drag
-    if (isDragging && dragStart && dragCurrent) {
+    if (isDragging && dragStart && dragCurrent && dragDay) {
       const slotStart = time.getTime();
       const dragStartTime = dragStart.getTime();
       const dragCurrentTime = dragCurrent.getTime();
+      const dayMatches = day.toDateString() === dragDay.toDateString();
       
-      return slotStart >= Math.min(dragStartTime, dragCurrentTime) && 
+      return dayMatches && 
+             slotStart >= Math.min(dragStartTime, dragCurrentTime) && 
              slotStart < Math.max(dragStartTime, dragCurrentTime);
     }
     
     return false;
-  };
-
-  const renderTimeEntry = (entry: CalendarTimeEntry) => {
-    const startY = getYFromTime(entry.startTime);
-    const endY = getYFromTime(entry.endTime);
-    const height = Math.max(endY - startY, SLOT_HEIGHT / 2);
-    
-    const categoryColor = getCategoryColor(entry.category);
-    
-    return (
-      <TouchableOpacity
-        key={entry.id}
-        style={[
-          styles.timeEntry,
-          {
-            top: startY,
-            height,
-            backgroundColor: categoryColor,
-            borderLeftColor: categoryColor,
-          },
-        ]}
-        onPress={() => onEntryPress(entry)}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.entryActivity} numberOfLines={1}>
-          {entry.activity}
-        </Text>
-        <Text style={styles.entryTime}>
-          {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
-        </Text>
-        {entry.moodRating && (
-          <Text style={styles.entryMood}>
-            {getMoodEmoji(entry.moodRating)}
-          </Text>
-        )}
-      </TouchableOpacity>
-    );
   };
 
   const getCategoryColor = (category: string): string => {
@@ -226,14 +214,66 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     return emojis[rating - 1] || '😐';
   };
 
+  const renderTimeEntry = (entry: CalendarTimeEntry, dayIndex: number) => {
+    const startY = getYFromTime(entry.startTime);
+    const endY = getYFromTime(entry.endTime);
+    const height = Math.max(endY - startY, SLOT_HEIGHT / 2);
+    
+    const categoryColor = getCategoryColor(entry.category);
+    
+    return (
+      <TouchableOpacity
+        key={entry.id}
+        style={[
+          styles.timeEntry,
+          {
+            top: startY,
+            height,
+            left: dayIndex * DAY_COLUMN_WIDTH + 2,
+            width: DAY_COLUMN_WIDTH - 4,
+            backgroundColor: categoryColor,
+            borderLeftColor: categoryColor,
+          },
+        ]}
+        onPress={() => onEntryPress(entry)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.entryActivity} numberOfLines={1}>
+          {entry.activity}
+        </Text>
+        <Text style={styles.entryTime} numberOfLines={1}>
+          {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
+        </Text>
+        {entry.moodRating && (
+          <Text style={styles.entryMood}>
+            {getMoodEmoji(entry.moodRating)}
+          </Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   const renderCurrentTimeIndicator = () => {
     const now = new Date();
     const currentY = getYFromTime(now);
+    const todayIndex = weekDates.findIndex(date => 
+      date.toDateString() === now.toDateString()
+    );
+    
+    if (todayIndex === -1) return null;
     
     return (
       <View style={[styles.currentTimeIndicator, { top: currentY }]}>
         <View style={styles.currentTimeCircle} />
-        <View style={styles.currentTimeLine} />
+        <View 
+          style={[
+            styles.currentTimeLine,
+            {
+              left: todayIndex * DAY_COLUMN_WIDTH,
+              width: DAY_COLUMN_WIDTH,
+            }
+          ]} 
+        />
       </View>
     );
   };
@@ -242,6 +282,40 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
+    },
+    dayHeaders: {
+      flexDirection: 'row',
+      backgroundColor: theme.colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      paddingVertical: theme.spacing.sm,
+    },
+    timeHeaderSpacer: {
+      width: TIME_LABEL_WIDTH,
+    },
+    dayHeader: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.borderRadius.sm,
+      marginHorizontal: 2,
+    },
+    selectedDayHeader: {
+      backgroundColor: theme.colors.primary,
+    },
+    todayHeader: {
+      backgroundColor: `${theme.colors.primary}20`,
+    },
+    dayHeaderText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.colors.textSecondary,
+    },
+    selectedDayHeaderText: {
+      color: theme.colors.background,
+    },
+    todayHeaderText: {
+      color: theme.colors.primary,
     },
     scrollView: {
       flex: 1,
@@ -266,11 +340,11 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
       paddingHorizontal: theme.spacing.xs,
     },
     timeLabel: {
-      fontSize: 12,
+      fontSize: 10,
       fontWeight: '600',
       color: theme.colors.textSecondary,
     },
-    grid: {
+    weekGrid: {
       flex: 1,
       position: 'relative',
     },
@@ -281,13 +355,12 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
       height: 1,
       backgroundColor: theme.colors.border,
     },
-    quarterHourLine: {
+    dayColumn: {
       position: 'absolute',
-      left: 0,
-      right: 0,
-      height: 1,
-      backgroundColor: theme.colors.border,
-      opacity: 0.3,
+      top: 0,
+      bottom: 0,
+      borderRightWidth: 1,
+      borderRightColor: theme.colors.border,
     },
     timeSlot: {
       position: 'absolute',
@@ -297,12 +370,18 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
+    quarterHourLine: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      height: 1,
+      backgroundColor: theme.colors.border,
+      opacity: 0.3,
+    },
     timeEntry: {
       position: 'absolute',
-      left: theme.spacing.xs,
-      right: theme.spacing.xs,
-      borderRadius: theme.borderRadius.sm,
-      borderLeftWidth: 4,
+      borderRadius: theme.borderRadius.xs,
+      borderLeftWidth: 3,
       padding: theme.spacing.xs,
       shadowColor: '#000',
       shadowOffset: {
@@ -314,25 +393,23 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
       elevation: 2,
     },
     entryActivity: {
-      fontSize: 14,
+      fontSize: 11,
       fontWeight: '600',
       color: '#fff',
-      marginBottom: 2,
+      marginBottom: 1,
     },
     entryTime: {
-      fontSize: 12,
+      fontSize: 9,
       color: 'rgba(255, 255, 255, 0.9)',
     },
     entryMood: {
-      fontSize: 12,
+      fontSize: 10,
       position: 'absolute',
       top: theme.spacing.xs,
       right: theme.spacing.xs,
     },
     currentTimeIndicator: {
       position: 'absolute',
-      left: 0,
-      right: 0,
       height: 2,
       flexDirection: 'row',
       alignItems: 'center',
@@ -346,40 +423,17 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
       marginLeft: -4,
     },
     currentTimeLine: {
-      flex: 1,
+      position: 'absolute',
       height: 2,
       backgroundColor: '#ef4444',
     },
-    selectionOverlay: {
-      position: 'absolute',
-      left: theme.spacing.xs,
-      right: theme.spacing.xs,
-      backgroundColor: `${theme.colors.primary}25`,
-      borderWidth: 2,
-      borderColor: theme.colors.primary,
-      borderRadius: theme.borderRadius.sm,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: theme.spacing.sm,
-    },
-    selectionOverlayText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.colors.primary,
-      backgroundColor: `${theme.colors.background}E6`,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xs,
-      borderRadius: theme.borderRadius.sm,
-    },
     dragOverlay: {
       position: 'absolute',
-      left: theme.spacing.xs,
-      right: theme.spacing.xs,
-      backgroundColor: `${theme.colors.primary}40`,
+      backgroundColor: 'rgba(66, 165, 245, 0.4)',
       borderWidth: 2,
-      borderColor: theme.colors.primary,
+      borderColor: '#42A5F5',
       borderRadius: theme.borderRadius.sm,
-      shadowColor: theme.colors.primary,
+      shadowColor: '#42A5F5',
       shadowOffset: {
         width: 0,
         height: 2,
@@ -392,6 +446,31 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* Day headers */}
+      <View style={styles.dayHeaders}>
+        <View style={styles.timeHeaderSpacer} />
+        {weekDates.map((date, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.dayHeader,
+              date.toDateString() === selectedDate.toDateString() && styles.selectedDayHeader,
+              date.toDateString() === new Date().toDateString() && styles.todayHeader,
+            ]}
+            onPress={() => onDatePress(date)}
+          >
+            <Text style={[
+              styles.dayHeaderText,
+              date.toDateString() === selectedDate.toDateString() && styles.selectedDayHeaderText,
+              date.toDateString() === new Date().toDateString() && styles.todayHeaderText,
+            ]}>
+              {formatDayHeader(date)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Scrollable calendar grid */}
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
@@ -411,9 +490,9 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
             })}
           </View>
 
-          {/* Main grid */}
+          {/* Week grid */}
           <View 
-            style={styles.grid}
+            style={styles.weekGrid}
             {...panResponder.panHandlers}
           >
             {/* Hour lines */}
@@ -427,61 +506,68 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
               />
             ))}
 
-            {/* Time slots */}
-            {timeSlots.map((slot, index) => {
-              const isSelected = isTimeSlotSelected(slot.start);
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.timeSlot,
-                    {
-                      top: index * SLOT_HEIGHT,
-                      backgroundColor: isCurrentTime(slot.start) ? `${theme.colors.primary}10` : 'transparent',
-                    },
-                  ]}
-                  onPress={() => !isDragging && onTimeSlotPress(slot.start)}
-                  activeOpacity={isDragging ? 1 : 0.1}
-                >
-                  {/* 15-minute markers */}
-                  {slot.start.getMinutes() !== 0 && (
-                    <View style={styles.quarterHourLine} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+            {/* Day columns */}
+            {weekDates.map((date, dayIndex) => (
+              <View
+                key={dayIndex}
+                style={[
+                  styles.dayColumn,
+                  {
+                    left: dayIndex * DAY_COLUMN_WIDTH,
+                    width: DAY_COLUMN_WIDTH,
+                  },
+                ]}
+              >
+                {/* Time slots for this day */}
+                {timeSlots.map((slot, slotIndex) => {
+                  const slotTime = new Date(date);
+                  slotTime.setHours(slot.start.getHours(), slot.start.getMinutes(), 0, 0);
+                  const isSelected = isTimeSlotSelected(slot.start, date);
+                  
+                  return (
+                    <TouchableOpacity
+                      key={slotIndex}
+                      style={[
+                        styles.timeSlot,
+                        {
+                          top: slotIndex * SLOT_HEIGHT,
+                          backgroundColor: isSelected 
+                            ? 'rgba(66, 165, 245, 0.3)' 
+                            : 'transparent',
+                        },
+                      ]}
+                      onPress={() => !isDragging && onTimeSlotPress(slotTime)}
+                      activeOpacity={isDragging ? 1 : 0.1}
+                    >
+                      {/* Quarter hour markers */}
+                      {slot.start.getMinutes() !== 0 && (
+                        <View style={styles.quarterHourLine} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
 
             {/* Time entries */}
-            {timeEntries.map(renderTimeEntry)}
+            {weekDates.map((date, dayIndex) => {
+              const dayEntries = getTimeEntriesForDate(date);
+              return dayEntries.map(entry => renderTimeEntry(entry, dayIndex));
+            })}
 
             {/* Current time indicator */}
             {renderCurrentTimeIndicator()}
 
-            {/* Selection overlay for finalized selections */}
-            {selection && selection.selectedSlots.length > 0 && !isDragging && (
-              <View
-                style={[
-                  styles.selectionOverlay,
-                  {
-                    top: getYFromTime(selection.startTime),
-                    height: getYFromTime(selection.endTime) - getYFromTime(selection.startTime),
-                  },
-                ]}
-              >
-                <Text style={styles.selectionOverlayText}>
-                  {formatTime(selection.startTime)} - {formatTime(selection.endTime)}
-                </Text>
-              </View>
-            )}
-
-            {/* Drag overlay for real-time dragging feedback */}
-            {isDragging && dragStart && dragCurrent && (
+            {/* Drag overlay */}
+            {isDragging && dragStart && dragCurrent && dragDay && (
               <View
                 style={[
                   styles.dragOverlay,
                   {
                     top: getYFromTime(dragStart < dragCurrent ? dragStart : dragCurrent),
                     height: Math.abs(getYFromTime(dragCurrent) - getYFromTime(dragStart)),
+                    left: weekDates.findIndex(d => d.toDateString() === dragDay.toDateString()) * DAY_COLUMN_WIDTH + 2,
+                    width: DAY_COLUMN_WIDTH - 4,
                   },
                 ]}
               />
@@ -491,6 +577,4 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
       </ScrollView>
     </View>
   );
-};
-
-// Styles moved inside component to use theme hook 
+}; 

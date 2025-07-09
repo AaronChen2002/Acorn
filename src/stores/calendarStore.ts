@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Platform } from 'react-native';
-import { CalendarTimeEntry, CalendarState, CalendarSelection, TimeSlot, ActivityCreationData } from '../types/calendar';
+import { CalendarTimeEntry, CalendarState, CalendarSelection, TimeSlot, ActivityCreationData, ViewMode, getWeekStart, getWeekEnd, getMonthStart, getMonthEnd } from '../types/calendar';
 import { generateId } from './appStore';
 import { databaseService } from '../services/database';
 import { webDatabaseService } from '../services/webDatabase';
@@ -12,11 +12,18 @@ interface CalendarStore extends CalendarState {
   // Actions
   setSelectedDate: (date: Date) => void;
   
+  // View mode actions (Phase 7.1)
+  setViewMode: (mode: ViewMode) => void;
+  navigateToDate: (date: Date) => void;
+  navigatePrevious: () => void;
+  navigateNext: () => void;
+  
   // Time entries
   addTimeEntry: (timeSlot: TimeSlot, activityData: ActivityCreationData) => Promise<void>;
   updateTimeEntry: (id: string, updates: Partial<CalendarTimeEntry>) => Promise<void>;
   deleteTimeEntry: (id: string) => Promise<void>;
   loadTimeEntriesForDate: (date: Date) => Promise<void>;
+  loadTimeEntriesForDateRange: (startDate: Date, endDate: Date) => Promise<void>;
   
   // Selection
   startSelection: (startTime: Date) => void;
@@ -42,6 +49,7 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
   selectedDate: new Date(),
   timeEntries: [],
   selection: null,
+  viewMode: 'day', // Default to day view
   isActivityModalVisible: false,
   editingEntry: null,
   viewStartHour: 6,
@@ -52,6 +60,73 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
   setSelectedDate: (date: Date) => {
     set({ selectedDate: date });
     get().loadTimeEntriesForDate(date);
+  },
+  
+  // View mode actions (Phase 7.1)
+  setViewMode: (mode: ViewMode) => {
+    set({ viewMode: mode });
+    
+    // Load appropriate data for the new view mode
+    const { selectedDate } = get();
+    if (mode === 'day') {
+      get().loadTimeEntriesForDate(selectedDate);
+    } else if (mode === 'week') {
+      const weekStart = getWeekStart(selectedDate);
+      const weekEnd = getWeekEnd(selectedDate);
+      get().loadTimeEntriesForDateRange(weekStart, weekEnd);
+    } else if (mode === 'month') {
+      const monthStart = getMonthStart(selectedDate);
+      const monthEnd = getMonthEnd(selectedDate);
+      get().loadTimeEntriesForDateRange(monthStart, monthEnd);
+    }
+  },
+  
+  navigateToDate: (date: Date) => {
+    const { viewMode } = get();
+    set({ selectedDate: date });
+    
+    // Load appropriate data for the new date
+    if (viewMode === 'day') {
+      get().loadTimeEntriesForDate(date);
+    } else if (viewMode === 'week') {
+      const weekStart = getWeekStart(date);
+      const weekEnd = getWeekEnd(date);
+      get().loadTimeEntriesForDateRange(weekStart, weekEnd);
+    } else if (viewMode === 'month') {
+      const monthStart = getMonthStart(date);
+      const monthEnd = getMonthEnd(date);
+      get().loadTimeEntriesForDateRange(monthStart, monthEnd);
+    }
+  },
+  
+  navigatePrevious: () => {
+    const { selectedDate, viewMode } = get();
+    const newDate = new Date(selectedDate);
+    
+    if (viewMode === 'day') {
+      newDate.setDate(newDate.getDate() - 1);
+    } else if (viewMode === 'week') {
+      newDate.setDate(newDate.getDate() - 7);
+    } else if (viewMode === 'month') {
+      newDate.setMonth(newDate.getMonth() - 1);
+    }
+    
+    get().navigateToDate(newDate);
+  },
+  
+  navigateNext: () => {
+    const { selectedDate, viewMode } = get();
+    const newDate = new Date(selectedDate);
+    
+    if (viewMode === 'day') {
+      newDate.setDate(newDate.getDate() + 1);
+    } else if (viewMode === 'week') {
+      newDate.setDate(newDate.getDate() + 7);
+    } else if (viewMode === 'month') {
+      newDate.setMonth(newDate.getMonth() + 1);
+    }
+    
+    get().navigateToDate(newDate);
   },
   
   // Time entries
@@ -128,6 +203,28 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
       set({ timeEntries: entries });
     } catch (error) {
       console.error('Error loading time entries:', error);
+      // Fallback to empty entries
+      set({ timeEntries: [] });
+    }
+  },
+  
+  loadTimeEntriesForDateRange: async (startDate: Date, endDate: Date) => {
+    try {
+      // Load all entries from database
+      const allEntries = await dbService.getCalendarTimeEntries();
+      
+      // Filter entries within the date range
+      const startDateKey = formatDateKey(startDate);
+      const endDateKey = formatDateKey(endDate);
+      
+      const filteredEntries = allEntries.filter(entry => {
+        return entry.date >= startDateKey && entry.date <= endDateKey;
+      });
+      
+      // Update store
+      set({ timeEntries: filteredEntries });
+    } catch (error) {
+      console.error('Error loading time entries for date range:', error);
       // Fallback to empty entries
       set({ timeEntries: [] });
     }

@@ -9,7 +9,7 @@ import {
   ScrollView,
   SafeAreaView,
 } from 'react-native';
-import { THEME } from '../constants';
+import { useTheme } from '../utils/theme';
 import { useAppStore } from '../stores/appStore';
 
 interface SideMenuProps {
@@ -26,6 +26,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
   onClose,
   onNavigate,
 }) => {
+  const { theme } = useTheme();
   const morningCheckIn = useAppStore((state) => state.morningCheckIn);
   
   const handleNavigate = (screen: string) => {
@@ -49,6 +50,162 @@ export const SideMenu: React.FC<SideMenuProps> = ({
       screen: 'morning',
     },
   ];
+
+  const styles = StyleSheet.create({
+    overlay: {
+      flex: 1,
+      flexDirection: 'row',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    backdrop: {
+      flex: 1,
+    },
+    menuContainer: {
+      width: MENU_WIDTH,
+      backgroundColor: theme.colors.background,
+      shadowColor: '#000',
+      shadowOffset: { width: 2, height: 0 },
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      elevation: 5,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: theme.spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    headerContent: {
+      flex: 1,
+    },
+    appName: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.colors.primary,
+      marginBottom: 4,
+    },
+    tagline: {
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+    },
+    closeButton: {
+      width: 32,
+      height: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 16,
+      backgroundColor: theme.colors.surface,
+    },
+    closeButtonText: {
+      fontSize: 24,
+      color: theme.colors.text,
+      fontWeight: 'bold',
+    },
+    quoteSection: {
+      padding: theme.spacing.lg,
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    quoteText: {
+      fontSize: 18,
+      fontStyle: 'italic',
+      color: theme.colors.primary,
+      textAlign: 'center',
+      fontWeight: '500',
+    },
+    navigationSection: {
+      paddingTop: theme.spacing.md,
+    },
+    menuItem: {
+      marginHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+      borderRadius: theme.borderRadius.md,
+      backgroundColor: theme.colors.surface,
+      overflow: 'hidden',
+    },
+    menuItemContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: theme.spacing.md,
+    },
+    iconContainer: {
+      width: 48,
+      height: 48,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.colors.primary,
+      borderRadius: 24,
+      marginRight: theme.spacing.md,
+    },
+    icon: {
+      fontSize: 20,
+    },
+    textContainer: {
+      flex: 1,
+    },
+    menuItemTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginBottom: 4,
+    },
+    menuItemSubtitle: {
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+    },
+    statusSection: {
+      margin: theme.spacing.md,
+      marginTop: theme.spacing.lg,
+    },
+    statusTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginBottom: theme.spacing.md,
+    },
+    statusCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.md,
+    },
+    statusRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: theme.spacing.sm,
+    },
+    statusLabel: {
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+    },
+    statusValue: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.colors.text,
+    },
+    footer: {
+      padding: theme.spacing.lg,
+      alignItems: 'center',
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      marginTop: theme.spacing.xl,
+    },
+    footerText: {
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+  });
 
   return (
     <Modal
@@ -149,160 +306,4 @@ export const SideMenu: React.FC<SideMenuProps> = ({
       </View>
     </Modal>
   );
-};
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  backdrop: {
-    flex: 1,
-  },
-  menuContainer: {
-    width: MENU_WIDTH,
-    backgroundColor: THEME.colors.background,
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: THEME.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: THEME.colors.primary,
-    marginBottom: 4,
-  },
-  tagline: {
-    fontSize: 14,
-    color: THEME.colors.textSecondary,
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 16,
-    backgroundColor: THEME.colors.surface,
-  },
-  closeButtonText: {
-    fontSize: 24,
-    color: THEME.colors.text,
-    fontWeight: 'bold',
-  },
-  quoteSection: {
-    padding: THEME.spacing.lg,
-    alignItems: 'center',
-    backgroundColor: THEME.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
-  },
-  quoteText: {
-    fontSize: 18,
-    fontStyle: 'italic',
-    color: THEME.colors.primary,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  navigationSection: {
-    paddingTop: THEME.spacing.md,
-  },
-  menuItem: {
-    marginHorizontal: THEME.spacing.md,
-    marginBottom: THEME.spacing.sm,
-    borderRadius: THEME.borderRadius.md,
-    backgroundColor: THEME.colors.surface,
-    overflow: 'hidden',
-  },
-  menuItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: THEME.spacing.md,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.primary,
-    borderRadius: 24,
-    marginRight: THEME.spacing.md,
-  },
-  icon: {
-    fontSize: 20,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  menuItemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    marginBottom: 4,
-  },
-  menuItemSubtitle: {
-    fontSize: 14,
-    color: THEME.colors.textSecondary,
-  },
-  statusSection: {
-    margin: THEME.spacing.md,
-    marginTop: THEME.spacing.lg,
-  },
-  statusTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    marginBottom: THEME.spacing.md,
-  },
-  statusCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.md,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: THEME.spacing.sm,
-  },
-  statusLabel: {
-    fontSize: 14,
-    color: THEME.colors.textSecondary,
-  },
-  statusValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: THEME.colors.text,
-  },
-  footer: {
-    padding: THEME.spacing.lg,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: THEME.colors.border,
-    marginTop: THEME.spacing.xl,
-  },
-  footerText: {
-    fontSize: 14,
-    color: THEME.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-}); 
+}; 

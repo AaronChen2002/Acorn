@@ -148,7 +148,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  theme: 'light',
+  theme: 'dark',
   reminderEnabled: true,
   reminderTime: '18:00',
 

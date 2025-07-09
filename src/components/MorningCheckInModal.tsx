@@ -11,11 +11,13 @@ import {
   SafeAreaView,
   Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MoodSlider } from './MoodSlider';
 import { EmotionButton } from './EmotionButton';
 import { useAppStore } from '../stores/appStore';
 import { MorningCheckInData } from '../types';
-import { THEME, EMOTIONS } from '../constants';
+import { EMOTIONS } from '../constants';
+import { useTheme } from '../utils/theme';
 
 interface MorningCheckInModalProps {
   isVisible: boolean;
@@ -26,29 +28,26 @@ interface MorningCheckInModalProps {
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// Warm morning color palette
-const MORNING_COLORS = {
-  sunrise: '#FF8A65', // Warm orange
-  sunriseLight: '#FFCCBC', // Light peach
-  goldenHour: '#FFB74D', // Golden yellow
-  skyBlue: '#81C784', // Soft blue-green
-  cloudWhite: '#F8F9FA', // Off-white
-  warmGray: '#BCAAA4', // Warm gray
-  accent: '#FF7043', // Vibrant coral
-};
-
 export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
   isVisible,
   onComplete,
   onCancel,
   currentPrompt,
 }) => {
-  const [energyLevel, setEnergyLevel] = useState(5);
-  const [positivityLevel, setPositivityLevel] = useState(5);
+  const { theme } = useTheme();
+  const [currentStep, setCurrentStep] = useState(0);
+  const [energyLevel, setEnergyLevel] = useState(3);
+  const [positivityLevel, setPositivityLevel] = useState(3);
+  const [focusLevel, setFocusLevel] = useState(3);
+  const [sleepQuality, setSleepQuality] = useState(3);
+  const [yesterdayCompletion, setYesterdayCompletion] = useState(3);
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [reflectionResponse, setReflectionResponse] = useState('');
+  const [mainGoal, setMainGoal] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const totalSteps = 9;
 
   const completeMorningCheckIn = useAppStore((state) => state.completeMorningCheckIn);
 
@@ -60,31 +59,61 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
     );
   };
 
-  const validateForm = (): boolean => {
-    if (selectedEmotions.length === 0) {
-      Alert.alert(
-        'Select Your Emotions',
-        'Please choose at least one emotion that describes how you feel this morning.',
-        [{ text: 'OK' }]
-      );
-      return false;
+  const validateCurrentStep = (): boolean => {
+    switch (currentStep) {
+      case 5: // Emotions step
+        if (selectedEmotions.length === 0) {
+          Alert.alert(
+            'Select Your Emotions',
+            'Please choose at least one emotion that describes how you feel this morning.',
+            [{ text: 'OK' }]
+          );
+          return false;
+        }
+        break;
+      case 6: // Main goal step
+        if (mainGoal.trim().length === 0) {
+          Alert.alert(
+            'Set Your Main Goal',
+            'Please share what your main goal or intention is for today.',
+            [{ text: 'OK' }]
+          );
+          return false;
+        }
+        break;
+      case 7: // Reflection step
+        if (reflectionResponse.trim().length < 10) {
+          Alert.alert(
+            'Add Your Reflection',
+            'Please share at least a few words about your reflection (minimum 10 characters).',
+            [{ text: 'OK' }]
+          );
+          return false;
+        }
+        break;
+      default:
+        return true;
     }
-
-    if (reflectionResponse.trim().length < 10) {
-      Alert.alert(
-        'Add Your Reflection',
-        'Please share at least a few words about your reflection (minimum 10 characters).',
-        [{ text: 'OK' }]
-      );
-      return false;
-    }
-
     return true;
   };
 
-  const handleComplete = async () => {
-    if (!validateForm()) return;
+  const handleNext = () => {
+    if (validateCurrentStep()) {
+      if (currentStep < totalSteps - 1) {
+        setCurrentStep(currentStep + 1);
+      } else {
+        handleComplete();
+      }
+    }
+  };
 
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleComplete = async () => {
     setIsSubmitting(true);
 
     try {
@@ -92,9 +121,13 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
         date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
         energyLevel,
         positivityLevel,
+        focusLevel,
+        sleepQuality,
+        yesterdayCompletion,
         emotions: selectedEmotions,
         reflectionPrompt: currentPrompt,
         reflectionResponse: reflectionResponse.trim(),
+        mainGoal: mainGoal.trim(),
         notes: notes.trim() || undefined,
       };
 
@@ -105,10 +138,15 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
       onComplete(checkInData);
 
       // Reset form for next time
-      setEnergyLevel(5);
-      setPositivityLevel(5);
+      setCurrentStep(0);
+      setEnergyLevel(3);
+      setPositivityLevel(3);
+      setFocusLevel(3);
+      setSleepQuality(3);
+      setYesterdayCompletion(3);
       setSelectedEmotions([]);
       setReflectionResponse('');
+      setMainGoal('');
       setNotes('');
     } catch (error) {
       console.error('Error completing morning check-in:', error);
@@ -123,55 +161,83 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
   };
 
   const handleCancel = () => {
+    setCurrentStep(0);
     onCancel();
   };
 
-  return (
-    <Modal
-      animationType="slide"
-      transparent={false}
-      visible={isVisible}
-      onRequestClose={handleCancel}
-    >
-      <View style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView 
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Header with warm gradient feel */}
-            <View style={styles.header}>
-              <View style={styles.headerContent}>
-                <Text style={styles.greeting}>Good morning! 🌅</Text>
-                <Text style={styles.subtitle}>Take a moment to check in with yourself</Text>
-              </View>
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>How did you sleep?</Text>
+            <View style={styles.stepContent}>
+              <MoodSlider
+                label="Sleep Quality"
+                value={sleepQuality}
+                onValueChange={setSleepQuality}
+              />
             </View>
-
-            {/* Mood Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>How are you feeling?</Text>
-              <View style={styles.moodContainer}>
-                <MoodSlider
-                  label="Energy Level"
-                  value={energyLevel}
-                  onValueChange={setEnergyLevel}
-                />
-                <View style={styles.moodSpacing} />
-                <MoodSlider
-                  label="Positivity Level"
-                  value={positivityLevel}
-                  onValueChange={setPositivityLevel}
-                />
-              </View>
+          </View>
+        );
+      case 1:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>Looking back at yesterday...</Text>
+            <View style={styles.stepContent}>
+              <MoodSlider
+                label="Did you complete what you wanted?"
+                value={yesterdayCompletion}
+                onValueChange={setYesterdayCompletion}
+              />
             </View>
-
-            {/* Emotions Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                What emotions are present? 
-                <Text style={styles.sectionSubtext}> (select all that apply)</Text>
-              </Text>
+          </View>
+        );
+      case 2:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>How's your energy?</Text>
+            <View style={styles.stepContent}>
+              <MoodSlider
+                label="Energy Level"
+                value={energyLevel}
+                onValueChange={setEnergyLevel}
+              />
+            </View>
+          </View>
+        );
+      case 3:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>How positive are you feeling?</Text>
+            <View style={styles.stepContent}>
+              <MoodSlider
+                label="Positivity Level"
+                value={positivityLevel}
+                onValueChange={setPositivityLevel}
+              />
+            </View>
+          </View>
+        );
+      case 4:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>How focused do you feel?</Text>
+            <View style={styles.stepContent}>
+              <MoodSlider
+                label="Focus Level"
+                value={focusLevel}
+                onValueChange={setFocusLevel}
+              />
+            </View>
+          </View>
+        );
+      case 5:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>What emotions are present?</Text>
+            <Text style={styles.stepSubtitle}>Select all that apply</Text>
+            <View style={styles.stepContent}>
               <View style={styles.emotionsGrid}>
                 {EMOTIONS.map((emotion) => (
                   <EmotionButton
@@ -184,270 +250,508 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
                 ))}
               </View>
             </View>
-
-            {/* Reflection Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Morning Reflection</Text>
-              <View style={styles.promptContainer}>
-                <Text style={styles.promptText}>"{currentPrompt}"</Text>
-              </View>
+          </View>
+        );
+      case 6:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>What's your main goal for today?</Text>
+            <View style={styles.stepContent}>
               <TextInput
-                style={styles.reflectionInput}
+                style={styles.textInput}
+                multiline
+                numberOfLines={3}
+                placeholder="What do you want to focus on and accomplish today?"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={mainGoal}
+                onChangeText={setMainGoal}
+                maxLength={200}
+                textAlignVertical="top"
+              />
+              <Text style={styles.characterCount}>
+                {mainGoal.length}/200 characters
+              </Text>
+            </View>
+          </View>
+        );
+      case 7:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>Morning Reflection</Text>
+            <View style={styles.promptContainer}>
+              <Text style={styles.promptText}>"{currentPrompt}"</Text>
+            </View>
+            <View style={styles.stepContent}>
+              <TextInput
+                style={styles.textInput}
                 multiline
                 numberOfLines={5}
                 placeholder="Share your thoughts and feelings about this prompt..."
-                placeholderTextColor={MORNING_COLORS.warmGray}
+                placeholderTextColor={theme.colors.textSecondary}
                 value={reflectionResponse}
                 onChangeText={setReflectionResponse}
                 maxLength={1000}
                 textAlignVertical="top"
-                accessibilityLabel="Reflection response"
-                accessibilityHint="Enter your thoughts about the morning reflection prompt"
               />
               <Text style={styles.characterCount}>
                 {reflectionResponse.length}/1000 characters
               </Text>
             </View>
-
-            {/* Notes Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Additional Notes 
-                <Text style={styles.sectionSubtext}> (optional)</Text>
-              </Text>
+          </View>
+        );
+      case 8:
+        return (
+          <View style={styles.stepContainer}>
+            <Text style={styles.stepTitle}>Additional Notes</Text>
+            <Text style={styles.stepSubtitle}>Optional - anything else on your mind?</Text>
+            <View style={styles.stepContent}>
               <TextInput
-                style={styles.notesInput}
+                style={styles.textInput}
                 multiline
                 numberOfLines={3}
-                placeholder="Anything else on your mind this morning?"
-                placeholderTextColor={MORNING_COLORS.warmGray}
+                placeholder="Any other thoughts or observations?"
+                placeholderTextColor={theme.colors.textSecondary}
                 value={notes}
                 onChangeText={setNotes}
                 maxLength={500}
                 textAlignVertical="top"
-                accessibilityLabel="Additional notes"
-                accessibilityHint="Optional notes about your morning"
               />
               <Text style={styles.characterCount}>
                 {notes.length}/500 characters
               </Text>
             </View>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
 
-            {/* Action Buttons */}
-            <View style={styles.actionContainer}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={handleCancel}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Cancel morning check-in"
-                accessibilityHint="Dismiss the morning check-in modal"
-              >
-                <Text style={styles.cancelButtonText}>Maybe Later</Text>
-              </TouchableOpacity>
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    backgroundGradient: {
+      flex: 1,
+      backgroundColor: '#1e293b',
+    },
+    safeArea: {
+      flex: 1,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
+    header: {
+      position: 'relative',
+      paddingHorizontal: theme.spacing.xl,
+      paddingVertical: theme.spacing.xl,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 8,
+      overflow: 'hidden',
+    },
+    headerBackground: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: '#FF6B35',
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+    },
+    headerOverlay1: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '60%',
+      backgroundColor: '#FF8E53',
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+    },
+    headerOverlay2: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '35%',
+      backgroundColor: '#FFB347',
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+    },
+    headerOverlay3: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '15%',
+      backgroundColor: '#FFD700',
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+      opacity: 0.8,
+    },
+    headerContent: {
+      alignItems: 'center',
+      paddingTop: theme.spacing.lg,
+      position: 'relative',
+      zIndex: 10,
+    },
+    headerGradient: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+    },
+
+    greeting: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: '#FFFFFF',
+      textAlign: 'center',
+      marginBottom: theme.spacing.sm,
+      textShadowColor: 'rgba(0, 0, 0, 0.5)',
+      textShadowOffset: { width: 0, height: 2 },
+      textShadowRadius: 4,
+    },
+    subtitle: {
+      fontSize: 18,
+      color: 'rgba(255, 255, 255, 0.9)',
+      textAlign: 'center',
+      fontWeight: '500',
+      textShadowColor: 'rgba(0, 0, 0, 0.3)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
+    },
+    section: {
+      paddingHorizontal: theme.spacing.xl,
+      paddingVertical: theme.spacing.lg,
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.colors.text,
+      marginBottom: theme.spacing.md,
+      letterSpacing: -0.5,
+    },
+    sectionSubtext: {
+      fontSize: 16,
+      fontWeight: '400',
+      color: theme.colors.textSecondary,
+    },
+    moodContainer: {
+      backgroundColor: 'rgba(30, 41, 59, 0.8)',
+      borderRadius: 16,
+      padding: theme.spacing.md,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    moodSpacing: {
+      height: theme.spacing.md,
+    },
+    emotionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
+      backgroundColor: 'rgba(30, 41, 59, 0.8)',
+      borderRadius: 16,
+      padding: theme.spacing.lg,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    promptContainer: {
+      backgroundColor: 'rgba(100, 116, 139, 0.15)',
+      borderRadius: 16,
+      padding: theme.spacing.lg,
+      marginBottom: theme.spacing.md,
+      borderLeftWidth: 4,
+      borderLeftColor: '#64748b',
+      borderWidth: 1,
+      borderColor: 'rgba(100, 116, 139, 0.3)',
+    },
+    promptText: {
+      fontSize: 16,
+      color: theme.colors.text,
+      lineHeight: 24,
+      fontStyle: 'italic',
+      fontWeight: '500',
+    },
+    reflectionInput: {
+      backgroundColor: 'rgba(30, 41, 59, 0.8)',
+      borderRadius: 16,
+      padding: theme.spacing.lg,
+      fontSize: 16,
+      color: theme.colors.text,
+      textAlignVertical: 'top',
+      minHeight: 120,
+      borderWidth: 2,
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+      lineHeight: 22,
+    },
+    notesInput: {
+      backgroundColor: 'rgba(30, 41, 59, 0.8)',
+      borderRadius: 16,
+      padding: theme.spacing.lg,
+      fontSize: 16,
+      color: theme.colors.text,
+      textAlignVertical: 'top',
+      minHeight: 80,
+      borderWidth: 2,
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+      lineHeight: 22,
+    },
+    characterCount: {
+      fontSize: 12,
+      color: theme.colors.textSecondary,
+      textAlign: 'right',
+      marginTop: theme.spacing.xs,
+      fontWeight: '500',
+    },
+    actionContainer: {
+      flexDirection: 'row',
+      paddingHorizontal: theme.spacing.xl,
+      paddingVertical: theme.spacing.lg,
+      gap: theme.spacing.md,
+    },
+    cancelButton: {
+      flex: 1,
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderColor: theme.colors.textSecondary,
+      borderRadius: 16,
+      paddingVertical: theme.spacing.md,
+      alignItems: 'center',
+    },
+    cancelButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.textSecondary,
+    },
+    completeButton: {
+      flex: 2,
+      backgroundColor: '#FF6B35',
+      borderRadius: 16,
+      paddingVertical: theme.spacing.md,
+      alignItems: 'center',
+      shadowColor: '#FF6B35',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    completeButtonDisabled: {
+      backgroundColor: theme.colors.textSecondary,
+      shadowOpacity: 0,
+      elevation: 0,
+    },
+    completeButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.colors.background,
+      letterSpacing: 0.5,
+    },
+    bottomSpacing: {
+      height: theme.spacing.xl,
+    },
+    // New step-by-step styles
+    progressContainer: {
+      paddingHorizontal: theme.spacing.xl,
+      paddingVertical: theme.spacing.md,
+      backgroundColor: theme.colors.background,
+    },
+    progressBar: {
+      height: 4,
+      backgroundColor: theme.colors.border,
+      borderRadius: 2,
+      marginBottom: theme.spacing.sm,
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: theme.colors.primary,
+      borderRadius: 2,
+    },
+    progressText: {
+      fontSize: 12,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      fontWeight: '500',
+    },
+    stepContainer: {
+      flex: 1,
+      paddingHorizontal: theme.spacing.xl,
+      paddingVertical: theme.spacing.lg,
+      justifyContent: 'center',
+    },
+    stepTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginBottom: theme.spacing.sm,
+      letterSpacing: -0.5,
+    },
+    stepSubtitle: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: theme.spacing.md,
+      fontWeight: '400',
+    },
+    stepContent: {
+      flex: 1,
+      justifyContent: 'center',
+      maxHeight: 400,
+    },
+    textInput: {
+      backgroundColor: 'rgba(30, 41, 59, 0.8)',
+      borderRadius: 16,
+      padding: theme.spacing.lg,
+      fontSize: 16,
+      color: theme.colors.text,
+      textAlignVertical: 'top',
+      minHeight: 120,
+      borderWidth: 2,
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+      lineHeight: 22,
+    },
+    navigationContainer: {
+      flexDirection: 'row',
+      paddingHorizontal: theme.spacing.xl,
+      paddingVertical: theme.spacing.lg,
+      gap: theme.spacing.md,
+    },
+    backButton: {
+      flex: 1,
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderColor: theme.colors.textSecondary,
+      borderRadius: 16,
+      paddingVertical: theme.spacing.md,
+      alignItems: 'center',
+    },
+    backButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.textSecondary,
+    },
+    nextButton: {
+      flex: 2,
+      backgroundColor: theme.colors.primary,
+      borderRadius: 16,
+      paddingVertical: theme.spacing.md,
+      alignItems: 'center',
+      shadowColor: theme.colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    nextButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.colors.background,
+      letterSpacing: 0.5,
+    },
+  });
+
+  return (
+    <Modal
+      animationType="slide"
+      transparent={false}
+      visible={isVisible}
+      onRequestClose={handleCancel}
+    >
+      <View style={styles.container}>
+        <View style={styles.backgroundGradient}>
+          <SafeAreaView style={styles.safeArea}>
+            {/* Header with warm sunrise gradient */}
+            <View style={styles.header}>
+              <LinearGradient
+                colors={['#FF6B35', '#FF8E53', '#FFB347', '#1e293b']}
+                locations={[0, 0.4, 0.7, 1]}
+                style={styles.headerGradient}
+              />
+              <View style={styles.headerContent}>
+                <Text style={styles.greeting}>Good morning! 🌅</Text>
+                <Text style={styles.subtitle}>Take a moment to check in with yourself</Text>
+              </View>
+            </View>
+
+            {/* Progress Indicator */}
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View 
+                  style={[
+                    styles.progressFill, 
+                    { width: `${((currentStep + 1) / totalSteps) * 100}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.progressText}>
+                {currentStep + 1} of {totalSteps}
+              </Text>
+            </View>
+
+            {/* Current Step Content */}
+            {renderCurrentStep()}
+
+            {/* Navigation Buttons */}
+            <View style={styles.navigationContainer}>
+              {currentStep > 0 ? (
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={handlePrevious}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.backButtonText}>Back</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={handleCancel}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.backButtonText}>Maybe Later</Text>
+                </TouchableOpacity>
+              )}
               
               <TouchableOpacity
-                style={[
-                  styles.completeButton,
-                  isSubmitting && styles.completeButtonDisabled,
-                ]}
-                onPress={handleComplete}
-                disabled={isSubmitting}
+                style={styles.nextButton}
+                onPress={handleNext}
                 activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel={isSubmitting ? 'Saving morning check-in' : 'Complete morning check-in'}
-                accessibilityHint="Save your morning check-in responses"
-                accessibilityState={{ disabled: isSubmitting }}
+                disabled={isSubmitting}
               >
-                <Text style={styles.completeButtonText}>
-                  {isSubmitting ? 'Saving...' : 'Complete Check-in'}
+                <Text style={styles.nextButtonText}>
+                  {currentStep === totalSteps - 1 
+                    ? (isSubmitting ? 'Saving...' : 'Complete') 
+                    : 'Next'
+                  }
                 </Text>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.bottomSpacing} />
-          </ScrollView>
-        </SafeAreaView>
+          </SafeAreaView>
+        </View>
       </View>
     </Modal>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: MORNING_COLORS.cloudWhite,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  header: {
-    backgroundColor: MORNING_COLORS.sunriseLight,
-    paddingHorizontal: THEME.spacing.xl,
-    paddingVertical: THEME.spacing.xl,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: MORNING_COLORS.sunrise,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  headerContent: {
-    alignItems: 'center',
-    paddingTop: THEME.spacing.lg,
-  },
-  greeting: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: MORNING_COLORS.accent,
-    textAlign: 'center',
-    marginBottom: THEME.spacing.sm,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: MORNING_COLORS.warmGray,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  section: {
-    paddingHorizontal: THEME.spacing.xl,
-    paddingVertical: THEME.spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: THEME.colors.text,
-    marginBottom: THEME.spacing.md,
-    letterSpacing: -0.5,
-  },
-  sectionSubtext: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: MORNING_COLORS.warmGray,
-  },
-  moodContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: THEME.spacing.lg,
-    shadowColor: MORNING_COLORS.sunrise,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  moodSpacing: {
-    height: THEME.spacing.lg,
-  },
-  emotionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: THEME.spacing.sm,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: THEME.spacing.lg,
-    shadowColor: MORNING_COLORS.sunrise,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  promptContainer: {
-    backgroundColor: MORNING_COLORS.goldenHour,
-    borderRadius: 16,
-    padding: THEME.spacing.lg,
-    marginBottom: THEME.spacing.md,
-    borderLeftWidth: 4,
-    borderLeftColor: MORNING_COLORS.accent,
-  },
-  promptText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    lineHeight: 24,
-    fontStyle: 'italic',
-    fontWeight: '500',
-  },
-  reflectionInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: THEME.spacing.lg,
-    fontSize: 16,
-    color: THEME.colors.text,
-    textAlignVertical: 'top',
-    minHeight: 120,
-    borderWidth: 2,
-    borderColor: MORNING_COLORS.sunriseLight,
-    lineHeight: 22,
-  },
-  notesInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: THEME.spacing.lg,
-    fontSize: 16,
-    color: THEME.colors.text,
-    textAlignVertical: 'top',
-    minHeight: 80,
-    borderWidth: 2,
-    borderColor: MORNING_COLORS.sunriseLight,
-    lineHeight: 22,
-  },
-  characterCount: {
-    fontSize: 12,
-    color: MORNING_COLORS.warmGray,
-    textAlign: 'right',
-    marginTop: THEME.spacing.xs,
-    fontWeight: '500',
-  },
-  actionContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: THEME.spacing.xl,
-    paddingVertical: THEME.spacing.lg,
-    gap: THEME.spacing.md,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: MORNING_COLORS.warmGray,
-    borderRadius: 16,
-    paddingVertical: THEME.spacing.md,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: MORNING_COLORS.warmGray,
-  },
-  completeButton: {
-    flex: 2,
-    backgroundColor: MORNING_COLORS.accent,
-    borderRadius: 16,
-    paddingVertical: THEME.spacing.md,
-    alignItems: 'center',
-    shadowColor: MORNING_COLORS.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  completeButtonDisabled: {
-    backgroundColor: MORNING_COLORS.warmGray,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  completeButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  bottomSpacing: {
-    height: THEME.spacing.xl,
-  },
-}); 
+}; 

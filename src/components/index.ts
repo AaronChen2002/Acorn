@@ -1,5 +1,9 @@
 export { ActivityCreationModal } from './ActivityCreationModal';
 export { CalendarGrid } from './CalendarGrid';
+export { CalendarWeekView } from './CalendarWeekView';
+export { CalendarMonthView } from './CalendarMonthView';
+export { ViewModeSwitcher } from './ViewModeSwitcher';
+export { CalendarHeader } from './CalendarHeader';
 export { CalendarTimeSlotPicker } from './CalendarTimeSlotPicker';
 export { CategoryDropdown } from './CategoryDropdown';
 export { CategorySelector } from './CategorySelector';

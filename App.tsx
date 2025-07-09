@@ -16,7 +16,7 @@ import { SideMenu } from './src/components/SideMenu';
 import { MorningCheckInModal } from './src/components/MorningCheckInModal';
 import { CheckInReviewPanel } from './src/components/CheckInReviewPanel';
 import { MorningCheckInData } from './src/types';
-import { THEME } from './src/constants';
+import { useTheme } from './src/utils/theme';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -30,6 +30,7 @@ const MORNING_COLORS = {
 };
 
 export default function App() {
+  const { theme, isDark } = useTheme();
   const [isInitialized, setIsInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
@@ -124,6 +125,102 @@ export default function App() {
     setShowCheckInReview(false);
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    mainContent: {
+      flex: 1,
+    },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: MORNING_COLORS.cloudWhite,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingContent: {
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.xl,
+    },
+    loadingIcon: {
+      marginBottom: theme.spacing.xl,
+    },
+    loadingEmoji: {
+      fontSize: 64,
+      textAlign: 'center',
+    },
+    loadingTitle: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: MORNING_COLORS.accent,
+      marginBottom: theme.spacing.sm,
+      textAlign: 'center',
+    },
+    loadingSubtitle: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: theme.spacing.xl,
+      lineHeight: 22,
+    },
+    loadingSpinner: {
+      marginTop: theme.spacing.lg,
+    },
+    errorContainer: {
+      flex: 1,
+      backgroundColor: MORNING_COLORS.cloudWhite,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    errorContent: {
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.xl,
+    },
+    errorEmoji: {
+      fontSize: 48,
+      marginBottom: theme.spacing.lg,
+    },
+    errorTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.colors.error,
+      marginBottom: theme.spacing.md,
+      textAlign: 'center',
+    },
+    errorMessage: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    sideMenuOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'black',
+      zIndex: 999,
+    },
+    sideMenuTouchable: {
+      flex: 1,
+      width: '100%',
+      height: '100%',
+    },
+    sideMenuContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      bottom: 0,
+      width: screenWidth * 0.8,
+      zIndex: 1000,
+    },
+  });
+
   // Loading screen
   if (!isInitialized) {
     return (
@@ -173,7 +270,7 @@ export default function App() {
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.colors.background} />
       
              <SafeAreaView style={styles.safeArea}>
         <TopNavigation 
@@ -239,7 +336,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: '#ffffff', // Will be overridden by theme
   },
   safeArea: {
     flex: 1,
@@ -255,10 +352,10 @@ const styles = StyleSheet.create({
   },
   loadingContent: {
     alignItems: 'center',
-    paddingHorizontal: THEME.spacing.xl,
+    paddingHorizontal: 32,
   },
   loadingIcon: {
-    marginBottom: THEME.spacing.xl,
+    marginBottom: 32,
   },
   loadingEmoji: {
     fontSize: 64,
@@ -268,18 +365,18 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: MORNING_COLORS.accent,
-    marginBottom: THEME.spacing.sm,
+    marginBottom: 8,
     textAlign: 'center',
   },
   loadingSubtitle: {
     fontSize: 16,
-    color: THEME.colors.textSecondary,
+    color: '#64748b',
     textAlign: 'center',
-    marginBottom: THEME.spacing.xl,
+    marginBottom: 32,
     lineHeight: 22,
   },
   loadingSpinner: {
-    marginTop: THEME.spacing.lg,
+    marginTop: 24,
   },
   errorContainer: {
     flex: 1,
@@ -289,22 +386,22 @@ const styles = StyleSheet.create({
   },
   errorContent: {
     alignItems: 'center',
-    paddingHorizontal: THEME.spacing.xl,
+    paddingHorizontal: 32,
   },
   errorEmoji: {
     fontSize: 48,
-    marginBottom: THEME.spacing.lg,
+    marginBottom: 24,
   },
   errorTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: THEME.colors.error,
-    marginBottom: THEME.spacing.md,
+    color: '#ef4444',
+    marginBottom: 16,
     textAlign: 'center',
   },
   errorMessage: {
     fontSize: 16,
-    color: THEME.colors.textSecondary,
+    color: '#64748b',
     textAlign: 'center',
     lineHeight: 22,
   },
