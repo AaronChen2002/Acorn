@@ -1,216 +1,238 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, ActivityIndicator, Alert } from 'react-native';
-import { CheckInScreen } from './src/screens/CheckInScreen';
-import { DailyPromptScreen } from './src/screens/DailyPromptScreen';
+import { 
+  View, 
+  StyleSheet, 
+  SafeAreaView, 
+  StatusBar, 
+  ActivityIndicator, 
+  Text,
+  Animated,
+  Dimensions,
+} from 'react-native';
+import { useAppStore } from './src/stores/appStore';
 import { TimeTrackingScreen } from './src/screens/TimeTrackingScreen';
 import { TopNavigation } from './src/components/TopNavigation';
+import { SideMenu } from './src/components/SideMenu';
 import { MorningCheckInModal } from './src/components/MorningCheckInModal';
 import { CheckInReviewPanel } from './src/components/CheckInReviewPanel';
-import { useAppStore } from './src/stores/appStore';
 import { MorningCheckInData } from './src/types';
 import { THEME } from './src/constants';
 
-type ScreenType = 'checkin' | 'reflection' | 'timetracking' | 'morning';
+const { width: screenWidth } = Dimensions.get('window');
 
-// App initialization states
-type AppState = 'loading' | 'ready' | 'error';
+// Warm morning colors for loading state
+const MORNING_COLORS = {
+  sunrise: '#FF8A65',
+  sunriseLight: '#FFCCBC',
+  goldenHour: '#FFB74D',
+  cloudWhite: '#F8F9FA',
+  accent: '#FF7043',
+};
 
 export default function App() {
-  // Phase 4: Make time tracking the default screen
-  const [currentScreen, setCurrentScreen] = useState<ScreenType>('timetracking');
-  const [appState, setAppState] = useState<AppState>('loading');
-  const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [showCheckInReview, setShowCheckInReview] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(-screenWidth));
 
-  // Morning Check-in state from store
-  const morningCheckIn = useAppStore((state) => state.morningCheckIn);
-  const getCurrentPrompt = useAppStore((state) => state.getCurrentPrompt);
-  const setModalVisibility = useAppStore((state) => state.setModalVisibility);
-  const initializeMorningCheckIn = useAppStore((state) => state.initializeMorningCheckIn);
-  const checkForNewDay = useAppStore((state) => state.checkForNewDay);
-  const setLoading = useAppStore((state) => state.setLoading);
-  const setError = useAppStore((state) => state.setError);
+  const {
+    shouldShowMorningModal,
+    resetMorningCheckIn,
+    getCurrentPrompt,
+    initializeMorningCheckIn,
+    morningCheckIn,
+    completeMorningCheckIn,
+  } = useAppStore();
 
-  // Initialize app and handle morning check-in logic
   useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        setAppState('loading');
-        setLoading(true);
-        setError(null);
-
-        // Simulate network/database initialization delay
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Initialize morning check-in logic
-        const shouldShowModal = await initializeMorningCheckIn();
-        
-        console.log('App initialized:', {
-          shouldShowModal,
-          currentTime: new Date().toLocaleString(),
-          morningCheckInState: morningCheckIn,
-          defaultScreen: 'timetracking', // Phase 4 change
-        });
-
-        setAppState('ready');
-        setLoading(false);
-        setInitializationError(null);
-
-      } catch (error) {
-        console.error('Error initializing app:', error);
-        setInitializationError(error instanceof Error ? error.message : 'Unknown error occurred');
-        setAppState('error');
-        setLoading(false);
-        setError('Failed to initialize app');
-      }
-    };
-
     initializeApp();
-  }, []); // Run only on mount
+  }, []);
 
-  // Handle periodic checks for new day transitions
   useEffect(() => {
-    // Check for new day every 5 minutes
-    const checkInterval = setInterval(() => {
-      try {
-        checkForNewDay();
-      } catch (error) {
-        console.error('Error checking for new day:', error);
-      }
-    }, 5 * 60 * 1000); // 5 minutes
+    // Animate fade in when app is initialized
+    if (isInitialized && !initError) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isInitialized, initError, fadeAnim]);
 
-    return () => clearInterval(checkInterval);
-  }, [checkForNewDay]);
-
-  // Handle app state changes (foreground/background)
   useEffect(() => {
-    // When app comes to foreground, check for new day
-    const handleAppStateChange = () => {
-      try {
-        checkForNewDay();
-      } catch (error) {
-        console.error('Error handling app state change:', error);
-      }
-    };
+    // Animate side menu
+    Animated.timing(slideAnim, {
+      toValue: isSideMenuOpen ? 0 : -screenWidth,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [isSideMenuOpen, slideAnim]);
 
-    // Add event listener for app state changes (React Native specific)
-    // This is a placeholder - in a real app you'd use AppState from react-native
-    // AppState.addEventListener('change', handleAppStateChange);
-    
-    return () => {
-      // AppState.removeEventListener('change', handleAppStateChange);
-    };
-  }, [checkForNewDay]);
+  const initializeApp = async () => {
+    try {
+      setInitError(null);
+      await initializeMorningCheckIn();
+      
+      // Add a small delay to show the beautiful loading screen
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setIsInitialized(true);
+    } catch (error) {
+      console.error('App initialization error:', error);
+      setInitError('Failed to initialize app. Please restart the application.');
+      setIsInitialized(true);
+    }
+  };
 
-  const handleMorningCheckInComplete = (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => {
-    // Morning check-in completed successfully
-    console.log('Morning check-in completed:', {
-      date: data.date,
-      energyLevel: data.energyLevel,
-      positivityLevel: data.positivityLevel,
-      emotionsCount: data.emotions.length,
-      hasReflection: !!data.reflectionResponse,
-      hasNotes: !!data.notes,
-    });
-    
-    // Hide the modal
-    setModalVisibility(false);
+  const handleMorningCheckInComplete = async (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => {
+    try {
+      await completeMorningCheckIn(data);
+      // Close the modal - shouldShowMorningModal will automatically return false
+    } catch (error) {
+      console.error('Error completing morning check-in:', error);
+    }
   };
 
   const handleMorningCheckInCancel = () => {
-    // User cancelled the morning check-in
-    console.log('Morning check-in cancelled at:', new Date().toLocaleString());
-    
-    // Show a gentle reminder about the benefits
-    Alert.alert(
-      'Morning Check-in Skipped',
-      'Your morning reflection helps set a positive tone for the day. You can always access it later if you change your mind.',
-      [
-        { 
-          text: 'OK', 
-          onPress: () => setModalVisibility(false) 
-        }
-      ]
-    );
+    resetMorningCheckIn();
   };
 
-  const handleScreenChange = (screen: string) => {
-    // Handle special screens
-    if (screen === 'morning' && morningCheckIn.data) {
-      // Show the morning check-in review panel
-      setShowCheckInReview(true);
-      return;
+  const handleMenuToggle = () => {
+    setIsSideMenuOpen(!isSideMenuOpen);
+  };
+
+  const handleCloseSideMenu = () => {
+    setIsSideMenuOpen(false);
+  };
+
+  const handleShowCheckInReview = () => {
+    setShowCheckInReview(true);
+    setIsSideMenuOpen(false);
+  };
+
+  const handleNavigate = (screen: string) => {
+    if (screen === 'morning') {
+      handleShowCheckInReview();
     }
-    
-    // Handle regular screen navigation
-    setCurrentScreen(screen as ScreenType);
+    // Add other navigation logic here if needed
+    setIsSideMenuOpen(false);
   };
 
-  const renderCurrentScreen = () => {
-    switch (currentScreen) {
-      case 'checkin':
-        return <CheckInScreen />;
-      case 'reflection':
-        return <DailyPromptScreen />;
-      case 'timetracking':
-        return <TimeTrackingScreen />;
-      default:
-        return <TimeTrackingScreen />; // Default to time tracking
-    }
+  const handleCloseCheckInReview = () => {
+    setShowCheckInReview(false);
   };
 
-  // Loading state
-  if (appState === 'loading') {
+  // Loading screen
+  if (!isInitialized) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={THEME.colors.primary} />
-        <Text style={styles.loadingText}>Initializing Acorn...</Text>
-        <Text style={styles.loadingSubtext}>Setting up your productivity space</Text>
+        <StatusBar barStyle="dark-content" backgroundColor={MORNING_COLORS.cloudWhite} />
+        <View style={styles.loadingContent}>
+          <Animated.View 
+            style={[
+              styles.loadingIcon,
+              { 
+                transform: [{ 
+                  rotate: fadeAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '360deg']
+                  })
+                }]
+              }
+            ]}
+          >
+            <Text style={styles.loadingEmoji}>🌅</Text>
+          </Animated.View>
+          <Text style={styles.loadingTitle}>Good morning!</Text>
+          <Text style={styles.loadingSubtitle}>Starting your day with intention</Text>
+          <ActivityIndicator 
+            size="large" 
+            color={MORNING_COLORS.accent} 
+            style={styles.loadingSpinner}
+          />
+        </View>
       </View>
     );
   }
 
-  // Error state
-  if (appState === 'error') {
+  // Error screen
+  if (initError) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>Unable to Start Acorn</Text>
-        <Text style={styles.errorMessage}>
-          {initializationError || 'An unexpected error occurred'}
-        </Text>
-        <Text style={styles.errorSubtext}>
-          Please try restarting the app. If the problem persists, check your connection.
-        </Text>
+        <StatusBar barStyle="dark-content" backgroundColor={MORNING_COLORS.cloudWhite} />
+        <View style={styles.errorContent}>
+          <Text style={styles.errorEmoji}>⚠️</Text>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorMessage}>{initError}</Text>
+        </View>
       </View>
     );
   }
 
-  // Main app interface
   return (
-    <View style={styles.container}>
-      <TopNavigation 
-        currentScreen={currentScreen} 
-        onScreenChange={handleScreenChange} 
-      />
-      <View style={styles.content}>
-        {renderCurrentScreen()}
-      </View>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
       
+             <SafeAreaView style={styles.safeArea}>
+        <TopNavigation 
+          currentScreen="timetracking"
+          onScreenChange={handleMenuToggle}
+        />
+        
+        <View style={styles.mainContent}>
+          {showCheckInReview && morningCheckIn.data ? (
+            <CheckInReviewPanel
+              isVisible={showCheckInReview}
+              onClose={handleCloseCheckInReview}
+              checkInData={morningCheckIn.data}
+            />
+          ) : (
+            <TimeTrackingScreen />
+          )}
+        </View>
+      </SafeAreaView>
+
+      {/* Side Menu Overlay */}
+      {isSideMenuOpen && (
+        <Animated.View 
+          style={[
+            styles.sideMenuOverlay,
+            { 
+              opacity: fadeAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 0.5]
+              })
+            }
+          ]}
+        >
+          <View style={styles.sideMenuTouchable} onTouchStart={handleCloseSideMenu} />
+        </Animated.View>
+      )}
+
+      {/* Side Menu */}
+             <Animated.View 
+        style={[
+          styles.sideMenuContainer,
+          { transform: [{ translateX: slideAnim }] }
+        ]}
+      >
+        <SideMenu
+          isVisible={isSideMenuOpen}
+          onClose={handleCloseSideMenu}
+          onNavigate={handleNavigate}
+        />
+      </Animated.View>
+
       {/* Morning Check-in Modal */}
       <MorningCheckInModal
-        isVisible={morningCheckIn.shouldShowModal}
+        isVisible={shouldShowMorningModal()}
         onComplete={handleMorningCheckInComplete}
         onCancel={handleMorningCheckInCancel}
         currentPrompt={getCurrentPrompt()}
       />
-
-      {/* Check-in Review Panel */}
-      <CheckInReviewPanel
-        isVisible={showCheckInReview}
-        onClose={() => setShowCheckInReview(false)}
-        checkInData={morningCheckIn.data}
-      />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -219,53 +241,93 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  content: {
+  safeArea: {
+    flex: 1,
+  },
+  mainContent: {
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
+    backgroundColor: MORNING_COLORS.cloudWhite,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: THEME.colors.background,
-    padding: THEME.spacing.lg,
   },
-  loadingText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    marginTop: THEME.spacing.lg,
+  loadingContent: {
+    alignItems: 'center',
+    paddingHorizontal: THEME.spacing.xl,
+  },
+  loadingIcon: {
+    marginBottom: THEME.spacing.xl,
+  },
+  loadingEmoji: {
+    fontSize: 64,
     textAlign: 'center',
   },
-  loadingSubtext: {
+  loadingTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: MORNING_COLORS.accent,
+    marginBottom: THEME.spacing.sm,
+    textAlign: 'center',
+  },
+  loadingSubtitle: {
     fontSize: 16,
     color: THEME.colors.textSecondary,
-    marginTop: THEME.spacing.sm,
     textAlign: 'center',
+    marginBottom: THEME.spacing.xl,
+    lineHeight: 22,
+  },
+  loadingSpinner: {
+    marginTop: THEME.spacing.lg,
   },
   errorContainer: {
     flex: 1,
+    backgroundColor: MORNING_COLORS.cloudWhite,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: THEME.colors.background,
-    padding: THEME.spacing.lg,
+  },
+  errorContent: {
+    alignItems: 'center',
+    paddingHorizontal: THEME.spacing.xl,
+  },
+  errorEmoji: {
+    fontSize: 48,
+    marginBottom: THEME.spacing.lg,
   },
   errorTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: THEME.colors.error,
-    textAlign: 'center',
     marginBottom: THEME.spacing.md,
+    textAlign: 'center',
   },
   errorMessage: {
     fontSize: 16,
-    color: THEME.colors.text,
-    textAlign: 'center',
-    marginBottom: THEME.spacing.sm,
-  },
-  errorSubtext: {
-    fontSize: 14,
     color: THEME.colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
+  },
+  sideMenuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'black',
+    zIndex: 999,
+  },
+  sideMenuTouchable: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  sideMenuContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: screenWidth * 0.8,
+    zIndex: 1000,
   },
 }); 
