@@ -124,6 +124,7 @@ export interface TagInputProps {
 export interface MorningCheckInModalProps {
   isVisible: boolean;
   onComplete: (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => void;
+  onCancel: () => void;
   currentPrompt: string;
 }
 
