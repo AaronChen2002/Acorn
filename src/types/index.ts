@@ -13,7 +13,7 @@ export interface EmotionalCheckIn {
 export interface Reflection {
   id: string;
   date: Date;
-  type: 'worry' | 'priority';
+  type: 'daily_prompt';
   content: string;
   tags: string[];
   created_at: Date;

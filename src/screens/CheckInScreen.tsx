@@ -154,7 +154,7 @@ export const CheckInScreen: React.FC = () => {
           style={styles.textInput}
           multiline
           numberOfLines={4}
-          placeholder="Describe how you're feeling in your own words..."
+          placeholder="Describe how you're feeling... What are you excited about today? Any concerns on your mind? What are your priorities? What's going well or challenging?"
           placeholderTextColor={THEME.colors.textSecondary}
           value={description}
           onChangeText={setDescription}

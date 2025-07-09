@@ -133,7 +133,7 @@ class DatabaseService {
     return result.map((row: any) => ({
       id: row.id,
       date: new Date(row.date),
-      type: row.type as 'worry' | 'priority',
+      type: row.type as 'daily_prompt',
       content: row.content,
       tags: JSON.parse(row.tags || '[]'),
       created_at: new Date(row.created_at),
