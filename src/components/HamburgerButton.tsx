@@ -1,88 +1,60 @@
 import React from 'react';
-import {
-  TouchableOpacity,
-  View,
-  StyleSheet,
-  Animated,
-} from 'react-native';
-import { HamburgerButtonProps } from '../types';
+import { TouchableOpacity, View, StyleSheet } from 'react-native';
 import { THEME } from '../constants';
 
-export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
-  onPress,
-  isMenuOpen,
+interface HamburgerButtonProps {
+  onPress: () => void;
+  isMenuOpen?: boolean;
+}
+
+export const HamburgerButton: React.FC<HamburgerButtonProps> = ({ 
+  onPress, 
+  isMenuOpen = false 
 }) => {
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, isMenuOpen && styles.containerOpen]}
       onPress={onPress}
       activeOpacity={0.7}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      accessibilityLabel="Open menu"
+      accessibilityHint="Double tap to open navigation menu"
     >
-      <View style={styles.hamburgerContainer}>
-        <Animated.View
-          style={[
-            styles.line,
-            styles.topLine,
-            isMenuOpen && styles.topLineOpen,
-          ]}
-        />
-        <Animated.View
-          style={[
-            styles.line,
-            styles.middleLine,
-            isMenuOpen && styles.middleLineOpen,
-          ]}
-        />
-        <Animated.View
-          style={[
-            styles.line,
-            styles.bottomLine,
-            isMenuOpen && styles.bottomLineOpen,
-          ]}
-        />
-      </View>
+      <View style={[styles.line, styles.line1, isMenuOpen && styles.line1Open]} />
+      <View style={[styles.line, styles.line2, isMenuOpen && styles.line2Open]} />
+      <View style={[styles.line, styles.line3, isMenuOpen && styles.line3Open]} />
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: THEME.spacing.sm,
-    borderRadius: THEME.borderRadius.sm,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
     backgroundColor: 'transparent',
   },
-  hamburgerContainer: {
-    width: 24,
-    height: 18,
-    justifyContent: 'space-between',
+  containerOpen: {
+    backgroundColor: THEME.colors.surface,
   },
   line: {
-    height: 2,
+    width: 24,
+    height: 3,
     backgroundColor: THEME.colors.text,
-    borderRadius: 1,
-    width: '100%',
+    borderRadius: 2,
+    marginVertical: 2,
   },
-  topLine: {
-    // Default state
+  line1: {},
+  line2: {},
+  line3: {},
+  line1Open: {
+    transform: [{ rotate: '45deg' }, { translateY: 7 }],
   },
-  topLineOpen: {
-    // TODO: Add rotation animation in Phase 5
-    backgroundColor: THEME.colors.primary,
+  line2Open: {
+    opacity: 0,
   },
-  middleLine: {
-    // Default state
-  },
-  middleLineOpen: {
-    // TODO: Add fade animation in Phase 5
-    opacity: 0.5,
-    backgroundColor: THEME.colors.primary,
-  },
-  bottomLine: {
-    // Default state
-  },
-  bottomLineOpen: {
-    // TODO: Add rotation animation in Phase 5
-    backgroundColor: THEME.colors.primary,
+  line3Open: {
+    transform: [{ rotate: '-45deg' }, { translateY: -7 }],
   },
 }); 

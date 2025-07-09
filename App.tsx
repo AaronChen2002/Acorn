@@ -5,19 +5,22 @@ import { DailyPromptScreen } from './src/screens/DailyPromptScreen';
 import { TimeTrackingScreen } from './src/screens/TimeTrackingScreen';
 import { TopNavigation } from './src/components/TopNavigation';
 import { MorningCheckInModal } from './src/components/MorningCheckInModal';
+import { CheckInReviewPanel } from './src/components/CheckInReviewPanel';
 import { useAppStore } from './src/stores/appStore';
 import { MorningCheckInData } from './src/types';
 import { THEME } from './src/constants';
 
-type ScreenType = 'checkin' | 'reflection' | 'timetracking';
+type ScreenType = 'checkin' | 'reflection' | 'timetracking' | 'morning';
 
 // App initialization states
 type AppState = 'loading' | 'ready' | 'error';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<ScreenType>('checkin');
+  // Phase 4: Make time tracking the default screen
+  const [currentScreen, setCurrentScreen] = useState<ScreenType>('timetracking');
   const [appState, setAppState] = useState<AppState>('loading');
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [showCheckInReview, setShowCheckInReview] = useState(false);
 
   // Morning Check-in state from store
   const morningCheckIn = useAppStore((state) => state.morningCheckIn);
@@ -46,6 +49,7 @@ export default function App() {
           shouldShowModal,
           currentTime: new Date().toLocaleString(),
           morningCheckInState: morningCheckIn,
+          defaultScreen: 'timetracking', // Phase 4 change
         });
 
         setAppState('ready');
@@ -130,6 +134,18 @@ export default function App() {
     );
   };
 
+  const handleScreenChange = (screen: string) => {
+    // Handle special screens
+    if (screen === 'morning' && morningCheckIn.data) {
+      // Show the morning check-in review panel
+      setShowCheckInReview(true);
+      return;
+    }
+    
+    // Handle regular screen navigation
+    setCurrentScreen(screen as ScreenType);
+  };
+
   const renderCurrentScreen = () => {
     switch (currentScreen) {
       case 'checkin':
@@ -139,7 +155,7 @@ export default function App() {
       case 'timetracking':
         return <TimeTrackingScreen />;
       default:
-        return <CheckInScreen />;
+        return <TimeTrackingScreen />; // Default to time tracking
     }
   };
 
@@ -149,7 +165,7 @@ export default function App() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={THEME.colors.primary} />
         <Text style={styles.loadingText}>Initializing Acorn...</Text>
-        <Text style={styles.loadingSubtext}>Setting up your morning routine</Text>
+        <Text style={styles.loadingSubtext}>Setting up your productivity space</Text>
       </View>
     );
   }
@@ -174,7 +190,7 @@ export default function App() {
     <View style={styles.container}>
       <TopNavigation 
         currentScreen={currentScreen} 
-        onScreenChange={setCurrentScreen} 
+        onScreenChange={handleScreenChange} 
       />
       <View style={styles.content}>
         {renderCurrentScreen()}
@@ -186,6 +202,13 @@ export default function App() {
         onComplete={handleMorningCheckInComplete}
         onCancel={handleMorningCheckInCancel}
         currentPrompt={getCurrentPrompt()}
+      />
+
+      {/* Check-in Review Panel */}
+      <CheckInReviewPanel
+        isVisible={showCheckInReview}
+        onClose={() => setShowCheckInReview(false)}
+        checkInData={morningCheckIn.data}
       />
     </View>
   );

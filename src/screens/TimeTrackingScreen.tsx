@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { TimePicker } from '../components/TimePicker';
 import { CategoryDropdown } from '../components/CategoryDropdown';
-import { TagInput } from '../components/TagInput';
 import { useAppStore } from '../stores/appStore';
 import { generateId } from '../stores/appStore';
 import { databaseService } from '../utils/database';
@@ -29,7 +28,8 @@ export const TimeTrackingScreen: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [startTime, setStartTime] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
-  const [tags, setTags] = useState<string[]>([]);
+  const [howDidItGo, setHowDidItGo] = useState('');
+  const [howDidYouFeel, setHowDidYouFeel] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addTimeEntry = useAppStore((state) => state.addTimeEntry);
@@ -59,7 +59,10 @@ export const TimeTrackingScreen: React.FC = () => {
         category: selectedCategory,
         start_time: startTime,
         end_time: endTime,
-        tags,
+        howDidItGo: howDidItGo.trim(),
+        howDidYouFeel: howDidYouFeel.trim(),
+        // Keep tags as empty array for backward compatibility
+        tags: [],
       };
 
       // Add to local state
@@ -90,7 +93,8 @@ export const TimeTrackingScreen: React.FC = () => {
               // Reset form
               setActivity('');
               setSelectedCategory('');
-              setTags([]);
+              setHowDidItGo('');
+              setHowDidYouFeel('');
               // Keep date and times as they might be relevant for next entry
             },
           },
@@ -107,25 +111,12 @@ export const TimeTrackingScreen: React.FC = () => {
     }
   };
 
-  const suggestedTags = [
-    'Productive',
-    'Focused',
-    'Collaborative',
-    'Creative',
-    'Learning',
-    'Routine',
-    'Urgent',
-    'Planning',
-    'Review',
-    'Meeting',
-  ];
-
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Text style={styles.title}>Track Your Time</Text>
         <Text style={styles.subtitle}>
-          Record what you're working on and when
+          Record what you're working on and how it went
         </Text>
       </View>
 
@@ -169,15 +160,39 @@ export const TimeTrackingScreen: React.FC = () => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          Tags <Text style={styles.optional}>(optional)</Text>
-        </Text>
-        <TagInput
-          tags={tags}
-          suggestions={suggestedTags}
-          onTagsChange={setTags}
-          placeholder="Add tags to categorize this activity..."
+        <Text style={styles.sectionTitle}>How did it go?</Text>
+        <TextInput
+          style={styles.multilineTextInput}
+          multiline
+          numberOfLines={3}
+          placeholder="Describe how the activity went... Was it productive? Challenging? Smooth? Any obstacles or wins?"
+          placeholderTextColor={THEME.colors.textSecondary}
+          value={howDidItGo}
+          onChangeText={setHowDidItGo}
+          maxLength={300}
+          textAlignVertical="top"
         />
+        <Text style={styles.characterCount}>
+          {howDidItGo.length}/300 characters
+        </Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>How did you feel?</Text>
+        <TextInput
+          style={styles.multilineTextInput}
+          multiline
+          numberOfLines={3}
+          placeholder="Share how you felt during this activity... Focused? Stressed? Energized? Bored? What was your emotional state?"
+          placeholderTextColor={THEME.colors.textSecondary}
+          value={howDidYouFeel}
+          onChangeText={setHowDidYouFeel}
+          maxLength={300}
+          textAlignVertical="top"
+        />
+        <Text style={styles.characterCount}>
+          {howDidYouFeel.length}/300 characters
+        </Text>
       </View>
 
       <TouchableOpacity
@@ -241,6 +256,18 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
     backgroundColor: THEME.colors.background,
   },
+  multilineTextInput: {
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.borderRadius.md,
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: THEME.spacing.sm,
+    fontSize: 16,
+    color: THEME.colors.text,
+    backgroundColor: THEME.colors.background,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
   timeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -254,6 +281,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: THEME.colors.text,
     marginBottom: THEME.spacing.xs,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    textAlign: 'right',
+    marginTop: THEME.spacing.xs,
   },
   optional: {
     fontSize: 14,

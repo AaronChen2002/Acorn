@@ -1,135 +1,140 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { THEME } from '../constants';
-
-type ScreenType = 'checkin' | 'reflection' | 'timetracking';
+import { HamburgerButton } from './HamburgerButton';
+import { SideMenu } from './SideMenu';
 
 interface TopNavigationProps {
-  currentScreen: ScreenType;
-  onScreenChange: (screen: ScreenType) => void;
+  currentScreen: string;
+  onScreenChange: (screen: string) => void;
 }
+
+const getScreenTitle = (screen: string): string => {
+  switch (screen) {
+    case 'timetracking':
+      return 'Time Tracking';
+    case 'checkin':
+      return 'Check-ins';
+    case 'reflection':
+      return 'Reflections';
+    case 'morning':
+      return 'Morning Ritual';
+    default:
+      return 'Acorn';
+  }
+};
+
+const getScreenSubtitle = (screen: string): string => {
+  switch (screen) {
+    case 'timetracking':
+      return 'Focus on what matters most';
+    case 'checkin':
+      return 'Track your emotional wellness';
+    case 'reflection':
+      return 'Reflect on your day';
+    case 'morning':
+      return 'Start your day mindfully';
+    default:
+      return 'Your mindful companion';
+  }
+};
 
 export const TopNavigation: React.FC<TopNavigationProps> = ({
   currentScreen,
   onScreenChange,
 }) => {
-  const tabs = [
-    { 
-      key: 'checkin' as ScreenType, 
-      label: 'Check-In', 
-      emoji: '😊',
-      description: 'Mood & Emotions'
-    },
-    { 
-      key: 'reflection' as ScreenType, 
-      label: 'Reflection', 
-      emoji: '🤔',
-      description: 'Daily Prompts'
-    },
-    { 
-      key: 'timetracking' as ScreenType, 
-      label: 'Time Tracking', 
-      emoji: '⏱️',
-      description: 'Activity Logging'
-    },
-  ];
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleMenuToggle = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleMenuClose = () => {
+    setIsMenuOpen(false);
+  };
+
+  const handleNavigate = (screen: string) => {
+    onScreenChange(screen);
+    setIsMenuOpen(false);
+  };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>🌱 Acorn</Text>
-      </View>
-      
-      <View style={styles.tabContainer}>
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={[
-              styles.tab,
-              currentScreen === tab.key && styles.tabActive,
-            ]}
-            onPress={() => onScreenChange(tab.key)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.tabEmoji}>{tab.emoji}</Text>
-            <Text
-              style={[
-                styles.tabLabel,
-                currentScreen === tab.key && styles.tabLabelActive,
-              ]}
-            >
-              {tab.label}
+    <>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          {/* Left Side - Hamburger Menu */}
+          <View style={styles.leftSection}>
+            <HamburgerButton
+              onPress={handleMenuToggle}
+              isMenuOpen={isMenuOpen}
+            />
+          </View>
+
+          {/* Center - Title */}
+          <View style={styles.centerSection}>
+            <Text style={styles.title} numberOfLines={1}>
+              {getScreenTitle(currentScreen)}
             </Text>
-            <Text
-              style={[
-                styles.tabDescription,
-                currentScreen === tab.key && styles.tabDescriptionActive,
-              ]}
-            >
-              {tab.description}
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {getScreenSubtitle(currentScreen)}
             </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
+          </View>
+
+          {/* Right Side - Future actions */}
+          <View style={styles.rightSection}>
+            {/* Placeholder for future actions like notifications, search, etc. */}
+          </View>
+        </View>
+      </SafeAreaView>
+
+      {/* Side Menu */}
+      <SideMenu
+        isVisible={isMenuOpen}
+        onClose={handleMenuClose}
+        onNavigate={handleNavigate}
+      />
+    </>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: THEME.colors.background,
+  },
   container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: THEME.spacing.lg,
+    paddingVertical: THEME.spacing.md,
     backgroundColor: THEME.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.border,
+    minHeight: 64,
   },
-  header: {
-    paddingTop: 50,
-    paddingBottom: THEME.spacing.sm,
-    paddingHorizontal: THEME.spacing.lg,
-    alignItems: 'center',
+  leftSection: {
+    width: 44,
+    alignItems: 'flex-start',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: THEME.colors.text,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: THEME.spacing.xs,
-  },
-  tab: {
+  centerSection: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: THEME.spacing.sm,
-    paddingHorizontal: THEME.spacing.xs,
-    marginHorizontal: THEME.spacing.xs,
-    borderRadius: THEME.borderRadius.md,
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
+    marginHorizontal: THEME.spacing.md,
   },
-  tabActive: {
-    backgroundColor: THEME.colors.surface,
-    borderBottomColor: THEME.colors.primary,
+  rightSection: {
+    width: 44,
+    alignItems: 'flex-end',
   },
-  tabEmoji: {
-    fontSize: 20,
-    marginBottom: 2,
-  },
-  tabLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary,
-    textAlign: 'center',
-  },
-  tabLabelActive: {
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: THEME.colors.text,
+    textAlign: 'center',
   },
-  tabDescription: {
-    fontSize: 10,
+  subtitle: {
+    fontSize: 14,
     color: THEME.colors.textSecondary,
     textAlign: 'center',
-    marginTop: 1,
-  },
-  tabDescriptionActive: {
-    color: THEME.colors.primary,
+    marginTop: 2,
   },
 }); 
