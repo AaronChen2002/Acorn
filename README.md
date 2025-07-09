@@ -1,210 +1,184 @@
-# 🌱 Acorn - Emotional Awareness & Productivity App
+# Acorn - Personal Productivity & Emotional Awareness App
 
-A personal productivity and emotional awareness app that helps users understand how they feel, what they care about, and how they spend their time — all in a lightweight, non-intrusive way.
+A React Native + Expo cross-platform application designed to help users track their emotional state, complete daily reflections, and manage time effectively through mindful activity tracking.
 
-## 🎯 Vision
+## 🌟 Project Overview
 
-Acorn is designed to build clarity, emotional awareness, and productivity insights over time through:
-- Daily emotional check-ins
-- Self-reflection prompts  
-- Time tracking & visualization
-- AI-powered pattern recognition
+Acorn is a comprehensive wellness and productivity app that combines:
+- **Daily Emotional Check-ins**: Track mood, energy levels, and emotions
+- **Reflective Journaling**: Deep daily prompts for self-awareness and growth
+- **Mindful Time Tracking**: Activity logging with emotional context
+- **AI-Ready Data Collection**: Structured data for future AI insights and recommendations
 
-## 🚀 Features (MVP)
+## 🎯 Core Features
 
-### ✅ Completed
-- [x] Project setup with React Native + Expo
-- [x] TypeScript configuration
-- [x] State management with Zustand
-- [x] SQLite database structure
-- [x] Core data models and types
-- [x] Development environment
+### 1. Daily Emotional Check-In
+- Mood tracking with 1-10 scale sliders for energy and positivity
+- Multi-select emotion grid with emoji representations
+- Free-form notes capturing priorities, concerns, excitement, and challenges
+- Cross-platform compatible interface
 
-### 🔄 In Progress
-- [ ] Daily Emotional Check-In interface
-- [ ] Self-Reflection Prompts
-- [ ] Time Tracking functionality
-- [ ] Calendar visualization
+### 2. Daily Reflection Prompts
+- 15 comprehensive prompts covering mental health, productivity, and personal growth
+- 2000-character response limit for detailed reflection
+- Tag-based categorization system with 20+ categories
+- Auto-suggestion and completion for consistent tagging
 
-### 📋 Planned
-- [ ] AI insights and clustering
-- [ ] Data export functionality
-- [ ] Cloud sync (optional)
-- [ ] Advanced analytics
+### 3. Time Tracking with Emotional Context
+- Activity description and categorization
+- Visual calendar time slot picker (placeholder for future calendar integration)
+- Dual emotional tracking: task-specific feelings and general mood
+- Comprehensive activity history with duration and emotional data
 
-## 🏗️ Technical Stack
+## 🛠️ Technical Stack
 
-- **Frontend**: React Native with Expo
+- **Framework**: React Native + Expo
+- **Language**: TypeScript
 - **State Management**: Zustand
-- **Database**: SQLite (local-first)
-- **UI Components**: Custom components with consistent theming
-- **Calendar**: React Native Calendars
-- **Charts**: Victory Native (planned)
-- **AI/ML**: OpenAI API (planned)
+- **Database**: SQLite (expo-sqlite)
+- **UI Components**: React Native core components
+- **Cross-platform**: Web and mobile compatible
 
-## 📁 Project Structure
-
-```
-acorn/
-├── src/
-│   ├── components/          # Reusable UI components
-│   ├── screens/            # Main app screens
-│   ├── stores/             # Zustand state stores
-│   ├── services/           # API and data services
-│   ├── utils/              # Helper functions
-│   ├── types/              # TypeScript definitions
-│   └── constants/          # App constants
-├── assets/                 # Images, fonts, etc.
-├── database/              # SQLite schema and migrations
-└── docs/                  # Documentation
-```
-
-## 🛠️ Development Setup
+## 📦 Installation & Setup
 
 ### Prerequisites
-- Node.js (v14 or higher)
+- Node.js (v18 or higher)
 - npm or yarn
-- Expo CLI (via npx)
+- Expo CLI
 
-### Installation
+### Quick Start
+```bash
+# Clone the repository
+git clone <repository-url>
+cd Acorn
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd Acorn
-   ```
+# Install dependencies
+npm install
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+# Start development server
+npx expo start
 
-3. **Start development server**
-   ```bash
-   npx expo start
-   ```
+# For web development
+npx expo start --web
 
-4. **Run on different platforms**
-   ```bash
-   # Web
-   npx expo start --web
-   
-   # iOS Simulator (macOS only)
-   npx expo start --ios
-   
-   # Android Emulator
-   npx expo start --android
-   ```
+# For mobile development
+npx expo start --tunnel
+```
 
-## 🎨 Design Principles
+### Development Commands
+```bash
+# Start with cache clear
+npx expo start --clear
 
-### Visual Design
-- **Clean, minimal interface** with plenty of white space
-- **Calming color palette** (soft blues, greens, warm neutrals)
-- **Consistent iconography** using Expo Icons
-- **Smooth animations** for state transitions
-- **Typography hierarchy** with clear readability
+# Web-specific development
+npx expo start --web --clear
 
-### User Experience
-- **Quick input flows** - minimize friction for daily check-ins
-- **Smart defaults** - remember user preferences
-- **Progressive disclosure** - advanced features don't clutter main flow
-- **Offline-first** - works without internet connection
+# Mobile testing
+npx expo start --tunnel
+```
 
-## 📊 Data Models
+## 🏗️ Project Structure
 
-### Core Entities
+```
+Acorn/
+├── src/
+│   ├── components/          # Reusable UI components
+│   │   ├── CalendarTimeSlotPicker.tsx
+│   │   ├── CategoryDropdown.tsx
+│   │   ├── EmotionButton.tsx
+│   │   ├── MoodSlider.tsx
+│   │   ├── TagInput.tsx
+│   │   ├── TimePicker.tsx
+│   │   └── TopNavigation.tsx
+│   ├── screens/             # Main application screens
+│   │   ├── CheckInScreen.tsx
+│   │   ├── DailyPromptScreen.tsx
+│   │   └── TimeTrackingScreen.tsx
+│   ├── stores/              # Zustand state management
+│   │   └── appStore.ts
+│   ├── services/            # External integrations
+│   │   └── database.ts
+│   ├── types/               # TypeScript type definitions
+│   │   └── index.ts
+│   ├── constants/           # App constants and theme
+│   │   └── index.ts
+│   └── utils/               # Utility functions
+├── docs/                    # Documentation
+├── database/                # Database files
+├── assets/                  # Static assets
+└── App.tsx                  # Main application component
+```
 
-**Emotional Check-In**
-- Mood sliders (energy, positivity)
-- Emotion selection (multiple choice)
-- Optional text description
+## 📱 App Navigation
 
-**Reflection**
-- Type: worry or priority
-- Free-text content
-- Auto-suggested tags
-
-**Time Entry**
-- Activity name and category
-- Start/end times
-- Custom tags
-
-**Insight**
-- AI-generated themes and patterns
-- Date range associations
-- Metadata for correlations
+The app uses a simple 3-tab navigation system:
+1. **Check-In**: Daily emotional state recording
+2. **Reflection**: Deep prompt-based journaling
+3. **Time Tracking**: Activity logging with emotional context
 
 ## 🔧 Development Guidelines
 
 ### Code Style
-- Use TypeScript for type safety
-- Follow ESLint and Prettier configurations
-- Write descriptive component and function names
-- Use meaningful commit messages
-
-### State Management
-- Zustand for global state
-- Local component state for UI-only data
-- Persistent storage via SQLite
+- TypeScript strict mode enabled
+- ESLint configuration for code quality
+- Consistent component structure and naming
+- Cross-platform compatibility maintained
 
 ### Component Architecture
-- Atomic Design approach (atoms, molecules, organisms)
-- Custom hooks for business logic
-- Error boundaries for graceful error handling
+- Functional components with React hooks
+- Zustand for state management
+- Consistent prop typing with TypeScript
+- Reusable component design patterns
+
+### Data Management
+- SQLite database for persistent storage
+- Zustand store for application state
+- Conditional database loading for web compatibility
+- Structured data collection for AI analysis
 
 ## 🚀 Deployment
 
-### Development
-- Expo Development Build for testing
-- Hot reloading for rapid iteration
+### Web Deployment
+```bash
+npx expo export --platform web
+# Deploy the generated web-build folder
+```
 
-### Production (Planned)
-- Expo Application Services (EAS) for building
-- Desktop apps via Electron
-- Progressive Web App option
+### Mobile Deployment
+```bash
+# Build for production
+npx expo build:android
+npx expo build:ios
+```
 
-## 🛣️ Roadmap
+## 🔮 Future Enhancements
 
-### Phase 1: Foundation (Week 1) ✅
-- [x] Basic app structure and navigation
-- [x] Data persistence with SQLite
-- [x] State management setup
+- AI-powered insights and recommendations
+- Calendar integration for time tracking
+- Data visualization and analytics
+- Social features and sharing capabilities
+- Advanced notification system
+- Export and backup functionality
 
-### Phase 2: Core Features (Week 2-3)
-- [ ] Daily emotional check-in interface
-- [ ] Self-reflection prompts
-- [ ] Time tracking foundation
+## 📚 Additional Documentation
 
-### Phase 3: Visualization (Week 4)
-- [ ] Calendar integration
-- [ ] Data visualization charts
-- [ ] Timeline views
-
-### Phase 4: Intelligence (Week 5-6)
-- [ ] AI text analysis
-- [ ] Pattern recognition
-- [ ] Insights generation
-
-### Phase 5: Polish (Week 7)
-- [ ] UI/UX refinement
-- [ ] Performance optimization
-- [ ] Export functionality
+- [Architecture Guide](docs/ARCHITECTURE.md) - Detailed code structure and patterns
+- [Component Documentation](docs/COMPONENTS.md) - Individual component guides
+- [Development Workflow](docs/DEVELOPMENT.md) - Development best practices
+- [Technical Plan](TECHNICAL_PLAN.md) - Original technical specifications
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Follow the existing code style and patterns
+4. Test cross-platform compatibility
+5. Submit a pull request with detailed description
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## 🆘 Support
 
-- Expo team for the excellent React Native framework
-- Zustand for lightweight state management
-- React Native community for amazing libraries 
+For questions, issues, or contributions, please refer to the documentation in the `docs/` directory or open an issue on the repository. 

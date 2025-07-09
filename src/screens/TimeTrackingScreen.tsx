@@ -4,51 +4,72 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Alert,
   Platform,
+  TextInput,
 } from 'react-native';
+import { TimePicker } from '../components/TimePicker';
+import { CategoryDropdown } from '../components/CategoryDropdown';
 import { TagInput } from '../components/TagInput';
 import { useAppStore } from '../stores/appStore';
 import { generateId } from '../stores/appStore';
 import { databaseService } from '../utils/database';
-import { THEME, DAILY_PROMPTS, REFLECTION_TAGS } from '../constants';
+import { THEME, ACTIVITY_CATEGORIES } from '../constants';
 
-export const DailyPromptScreen: React.FC = () => {
-  const [response, setResponse] = useState('');
+interface TimeSlot {
+  start: Date;
+  end: Date;
+  available: boolean;
+}
+
+export const TimeTrackingScreen: React.FC = () => {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [activity, setActivity] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [startTime, setStartTime] = useState(new Date());
+  const [endTime, setEndTime] = useState(new Date());
   const [tags, setTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const addReflection = useAppStore((state) => state.addReflection);
-
-  // Get today's prompt (for now, we'll cycle through randomly)
-  const todaysPrompt = DAILY_PROMPTS[Math.floor(Math.random() * DAILY_PROMPTS.length)];
+  const addTimeEntry = useAppStore((state) => state.addTimeEntry);
 
   const handleSubmit = async () => {
-    if (!response.trim()) {
-      Alert.alert('Response Required', 'Please provide a response to the prompt.');
+    if (!activity.trim()) {
+      Alert.alert('Missing Activity', 'Please enter an activity name.');
+      return;
+    }
+
+    if (!selectedCategory) {
+      Alert.alert('Missing Category', 'Please select a category.');
+      return;
+    }
+
+    if (startTime >= endTime) {
+      Alert.alert('Invalid Time', 'End time must be after start time.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const reflectionData = {
-        date: new Date(),
-        type: 'daily_prompt' as const,
-        content: response.trim(),
+      const timeEntryData = {
+        date: selectedDate,
+        activity: activity.trim(),
+        category: selectedCategory,
+        start_time: startTime,
+        end_time: endTime,
         tags,
       };
 
       // Add to local state
-      addReflection(reflectionData);
+      addTimeEntry(timeEntryData);
 
       // Save to database (only on native platforms)
       if (databaseService) {
         try {
-          await databaseService.saveReflection({
-            ...reflectionData,
+          await databaseService.saveTimeEntry({
+            ...timeEntryData,
             id: generateId(),
             created_at: new Date(),
           });
@@ -58,64 +79,93 @@ export const DailyPromptScreen: React.FC = () => {
       }
 
       Alert.alert(
-        'Reflection Saved!',
+        'Time Entry Saved!',
         Platform.OS === 'web' 
-          ? 'Your daily reflection has been recorded (stored locally for this session).'
-          : 'Your daily reflection has been recorded.',
+          ? 'Your time entry has been recorded (stored locally for this session).'
+          : 'Your time entry has been recorded.',
         [
           {
             text: 'OK',
             onPress: () => {
               // Reset form
-              setResponse('');
+              setActivity('');
+              setSelectedCategory('');
               setTags([]);
+              // Keep date and times as they might be relevant for next entry
             },
           },
         ]
       );
     } catch (error) {
-      console.error('Error saving reflection:', error);
+      console.error('Error saving time entry:', error);
       Alert.alert(
         'Error',
-        'There was a problem saving your reflection. Please try again.'
+        'There was a problem saving your time entry. Please try again.'
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const suggestedTags = [
+    'Productive',
+    'Focused',
+    'Collaborative',
+    'Creative',
+    'Learning',
+    'Routine',
+    'Urgent',
+    'Planning',
+    'Review',
+    'Meeting',
+  ];
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={styles.title}>Daily Reflection</Text>
+        <Text style={styles.title}>Track Your Time</Text>
         <Text style={styles.subtitle}>
-          Take a moment to reflect on your day
+          Record what you're working on and when
         </Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Today's Prompt</Text>
-        <View style={styles.promptContainer}>
-          <Text style={styles.promptText}>{todaysPrompt}</Text>
+        <Text style={styles.sectionTitle}>Activity</Text>
+        <TextInput
+          style={styles.textInput}
+          placeholder="What did you work on?"
+          placeholderTextColor={THEME.colors.textSecondary}
+          value={activity}
+          onChangeText={setActivity}
+          maxLength={200}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Time</Text>
+        <View style={styles.timeRow}>
+          <View style={styles.timePickerContainer}>
+            <TimePicker
+              label="Start"
+              value={startTime}
+              onTimeChange={setStartTime}
+            />
+          </View>
+          <View style={styles.timePickerContainer}>
+            <TimePicker
+              label="End"
+              value={endTime}
+              onTimeChange={setEndTime}
+            />
+          </View>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Response</Text>
-        <TextInput
-          style={styles.responseInput}
-          multiline
-          numberOfLines={8}
-          placeholder="Share your thoughts and reflections..."
-          placeholderTextColor={THEME.colors.textSecondary}
-          value={response}
-          onChangeText={setResponse}
-          maxLength={1000}
-          textAlignVertical="top"
+        <CategoryDropdown
+          selectedCategory={selectedCategory}
+          onCategorySelect={setSelectedCategory}
         />
-        <Text style={styles.characterCount}>
-          {response.length}/1000 characters
-        </Text>
       </View>
 
       <View style={styles.section}>
@@ -124,9 +174,9 @@ export const DailyPromptScreen: React.FC = () => {
         </Text>
         <TagInput
           tags={tags}
-          suggestions={REFLECTION_TAGS}
+          suggestions={suggestedTags}
           onTagsChange={setTags}
-          placeholder="Add tags to categorize this reflection..."
+          placeholder="Add tags to categorize this activity..."
         />
       </View>
 
@@ -140,7 +190,7 @@ export const DailyPromptScreen: React.FC = () => {
         activeOpacity={0.8}
       >
         <Text style={styles.submitButtonText}>
-          {isSubmitting ? 'Saving...' : 'Save Reflection'}
+          {isSubmitting ? 'Saving...' : 'Save Time Entry'}
         </Text>
       </TouchableOpacity>
 
@@ -181,35 +231,29 @@ const styles = StyleSheet.create({
     color: THEME.colors.text,
     marginBottom: THEME.spacing.md,
   },
-  promptContainer: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: THEME.colors.primary,
-  },
-  promptText: {
-    fontSize: 16,
-    color: THEME.colors.text,
-    lineHeight: 24,
-    fontStyle: 'italic',
-  },
-  responseInput: {
+  textInput: {
     borderWidth: 1,
     borderColor: THEME.colors.border,
     borderRadius: THEME.borderRadius.md,
-    padding: THEME.spacing.md,
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: THEME.spacing.sm,
     fontSize: 16,
     color: THEME.colors.text,
     backgroundColor: THEME.colors.background,
-    textAlignVertical: 'top',
-    minHeight: 120,
   },
-  characterCount: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    textAlign: 'right',
-    marginTop: THEME.spacing.xs,
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: THEME.spacing.md,
+  },
+  timePickerContainer: {
+    flex: 1,
+  },
+  timeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.text,
+    marginBottom: THEME.spacing.xs,
   },
   optional: {
     fontSize: 14,

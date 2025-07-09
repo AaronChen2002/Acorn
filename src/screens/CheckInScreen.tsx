@@ -12,21 +12,13 @@ import {
 import { MoodSlider } from '../components/MoodSlider';
 import { EmotionButton } from '../components/EmotionButton';
 import { useAppStore } from '../stores/appStore';
+import { generateId } from '../stores/appStore';
+import { databaseService } from '../utils/database';
 import { THEME, EMOTIONS } from '../constants';
 
-// Conditionally import database service only for native platforms
-let databaseService: any = null;
-if (Platform.OS !== 'web') {
-  try {
-    databaseService = require('../services/database').databaseService;
-  } catch (error) {
-    console.log('Database service not available on this platform');
-  }
-}
-
 export const CheckInScreen: React.FC = () => {
-  const [moodEnergy, setMoodEnergy] = useState(5);
-  const [moodPositivity, setMoodPositivity] = useState(5);
+  const [energyLevel, setEnergyLevel] = useState(5);
+  const [positivityLevel, setPositivityLevel] = useState(5);
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,8 +47,8 @@ export const CheckInScreen: React.FC = () => {
     try {
       const checkInData = {
         date: new Date(),
-        mood_energy: moodEnergy,
-        mood_positivity: moodPositivity,
+        energyLevel,
+        positivityLevel,
         emotions: selectedEmotions,
         description: description.trim() || undefined,
       };
@@ -69,7 +61,7 @@ export const CheckInScreen: React.FC = () => {
         try {
           await databaseService.saveCheckIn({
             ...checkInData,
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: generateId(),
             created_at: new Date(),
           });
         } catch (dbError) {
@@ -87,8 +79,8 @@ export const CheckInScreen: React.FC = () => {
             text: 'OK',
             onPress: () => {
               // Reset form
-              setMoodEnergy(5);
-              setMoodPositivity(5);
+              setEnergyLevel(5);
+              setPositivityLevel(5);
               setSelectedEmotions([]);
               setDescription('');
             },
@@ -119,13 +111,13 @@ export const CheckInScreen: React.FC = () => {
         <Text style={styles.sectionTitle}>Mood Levels</Text>
         <MoodSlider
           label="Energy Level"
-          value={moodEnergy}
-          onValueChange={setMoodEnergy}
+          value={energyLevel}
+          onValueChange={setEnergyLevel}
         />
         <MoodSlider
           label="Positivity Level"
-          value={moodPositivity}
-          onValueChange={setMoodPositivity}
+          value={positivityLevel}
+          onValueChange={setPositivityLevel}
         />
       </View>
 
@@ -211,21 +203,20 @@ const styles = StyleSheet.create({
     paddingVertical: THEME.spacing.md,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: THEME.colors.text,
     marginBottom: THEME.spacing.md,
   },
   optional: {
     fontSize: 14,
-    fontWeight: '400',
+    fontWeight: 'normal',
     color: THEME.colors.textSecondary,
   },
   emotionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: THEME.spacing.sm,
-    justifyContent: 'space-between',
   },
   textInput: {
     borderWidth: 1,
@@ -234,7 +225,7 @@ const styles = StyleSheet.create({
     padding: THEME.spacing.md,
     fontSize: 16,
     color: THEME.colors.text,
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: THEME.colors.background,
     textAlignVertical: 'top',
     minHeight: 100,
   },
@@ -246,13 +237,19 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: THEME.colors.primary,
-    margin: THEME.spacing.lg,
-    padding: THEME.spacing.md,
     borderRadius: THEME.borderRadius.md,
+    paddingVertical: THEME.spacing.md,
+    paddingHorizontal: THEME.spacing.lg,
+    margin: THEME.spacing.lg,
     alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   submitButtonDisabled: {
-    opacity: 0.6,
+    backgroundColor: THEME.colors.textSecondary,
   },
   submitButtonText: {
     color: 'white',
@@ -260,6 +257,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bottomSpacing: {
-    height: THEME.spacing.xl,
+    height: THEME.spacing.lg,
   },
 }); 

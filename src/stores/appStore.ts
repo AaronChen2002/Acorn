@@ -4,7 +4,10 @@ import {
   Reflection,
   TimeEntry,
   Insight,
+  MorningCheckInData,
+  MorningCheckInState,
 } from '../types';
+import { DAILY_PROMPTS } from '../constants';
 
 interface AppState {
   // Data
@@ -12,6 +15,9 @@ interface AppState {
   reflections: Reflection[];
   timeEntries: TimeEntry[];
   insights: Insight[];
+
+  // Morning Check-in State (New)
+  morningCheckIn: MorningCheckInState;
 
   // UI State
   selectedDate: Date;
@@ -45,6 +51,14 @@ interface AppState {
 
   addInsight: (insight: Omit<Insight, 'id' | 'created_at'>) => void;
 
+  // Morning Check-in Actions (New)
+  completeMorningCheckIn: (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => void;
+  shouldShowMorningModal: () => boolean;
+  resetMorningCheckIn: () => void;
+  getCurrentPrompt: () => string;
+  cycleToNextPrompt: () => void;
+  setModalVisibility: (visible: boolean) => void;
+
   // Getters
   getCheckInByDate: (date: Date) => EmotionalCheckIn | undefined;
   getReflectionsByDate: (date: Date) => Reflection[];
@@ -57,10 +71,23 @@ interface AppState {
   setReminderTime: (time: string) => void;
 }
 
-const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+// Centralized ID generation utility
+export const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 const isSameDate = (date1: Date, date2: Date) => {
   return date1.toDateString() === date2.toDateString();
+};
+
+// Helper function to format date as YYYY-MM-DD
+const formatDate = (date: Date): string => {
+  return date.toISOString().split('T')[0];
+};
+
+// Helper function to check if it's after 5 AM
+const isMorningTime = (): boolean => {
+  const now = new Date();
+  const hour = now.getHours();
+  return hour >= 5;
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -70,8 +97,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   timeEntries: [],
   insights: [],
 
+  // Morning Check-in initial state
+  morningCheckIn: {
+    isCompleted: false,
+    completedAt: null,
+    data: null,
+    shouldShowModal: false,
+    currentPromptIndex: 0,
+    lastPromptDate: null,
+  },
+
   selectedDate: new Date(),
-  currentScreen: 'Home',
+  currentScreen: 'TimeTracking',
   isLoading: false,
   error: null,
 
@@ -172,6 +209,82 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
     set((state) => ({
       insights: [...state.insights, insight],
+    }));
+  },
+
+  // Morning Check-in Actions (New)
+  completeMorningCheckIn: (checkInData) => {
+    const completedData: MorningCheckInData = {
+      ...checkInData,
+      id: generateId(),
+      completedAt: new Date(),
+    };
+
+    set((state) => ({
+      morningCheckIn: {
+        ...state.morningCheckIn,
+        isCompleted: true,
+        completedAt: new Date(),
+        data: completedData,
+        shouldShowModal: false,
+      },
+    }));
+  },
+
+  shouldShowMorningModal: () => {
+    const { morningCheckIn } = get();
+    const today = formatDate(new Date());
+    const lastCompletedDate = morningCheckIn.data?.date;
+
+    return (
+      isMorningTime() && 
+      !morningCheckIn.isCompleted && 
+      lastCompletedDate !== today
+    );
+  },
+
+  resetMorningCheckIn: () => {
+    set((state) => ({
+      morningCheckIn: {
+        ...state.morningCheckIn,
+        isCompleted: false,
+        completedAt: null,
+        data: null,
+        shouldShowModal: false,
+      },
+    }));
+  },
+
+  getCurrentPrompt: () => {
+    const { morningCheckIn } = get();
+    return DAILY_PROMPTS[morningCheckIn.currentPromptIndex] || DAILY_PROMPTS[0];
+  },
+
+  cycleToNextPrompt: () => {
+    const today = formatDate(new Date());
+    
+    set((state) => {
+      // Only cycle if it's a new day
+      if (state.morningCheckIn.lastPromptDate !== today) {
+        const nextIndex = (state.morningCheckIn.currentPromptIndex + 1) % DAILY_PROMPTS.length;
+        return {
+          morningCheckIn: {
+            ...state.morningCheckIn,
+            currentPromptIndex: nextIndex,
+            lastPromptDate: today,
+          },
+        };
+      }
+      return state;
+    });
+  },
+
+  setModalVisibility: (visible) => {
+    set((state) => ({
+      morningCheckIn: {
+        ...state.morningCheckIn,
+        shouldShowModal: visible,
+      },
     }));
   },
 

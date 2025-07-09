@@ -3,8 +3,8 @@
 export interface EmotionalCheckIn {
   id: string;
   date: Date;
-  mood_energy: number; // 1-10 scale
-  mood_positivity: number; // 1-10 scale
+  energyLevel: number; // 1-10 scale (standardized naming)
+  positivityLevel: number; // 1-10 scale (standardized naming)
   emotions: string[]; // ['stressed', 'energized', etc.]
   description?: string;
   created_at: Date;
@@ -40,6 +40,28 @@ export interface Insight {
   created_at: Date;
 }
 
+// Morning Check-in Types (New)
+export interface MorningCheckInData {
+  id: string;
+  date: string; // YYYY-MM-DD format
+  energyLevel: number; // 1-10 scale
+  positivityLevel: number; // 1-10 scale
+  emotions: string[]; // Array of emotion keys
+  reflectionPrompt: string; // The prompt shown to user
+  reflectionResponse: string; // User's response to prompt
+  notes?: string; // Optional additional notes
+  completedAt: Date; // When the check-in was completed
+}
+
+export interface MorningCheckInState {
+  isCompleted: boolean; // Has today's check-in been completed?
+  completedAt: Date | null; // When was it completed?
+  data: MorningCheckInData | null; // The actual check-in data
+  shouldShowModal: boolean; // Should we show the modal?
+  currentPromptIndex: number; // Current prompt in the cycle
+  lastPromptDate: string | null; // Last date we cycled the prompt (YYYY-MM-DD)
+}
+
 // UI Types
 export interface AppTheme {
   colors: {
@@ -68,14 +90,10 @@ export interface AppTheme {
   };
 }
 
-// Navigation Types
+// Navigation Types (Updated - removing tab-based navigation)
 export type RootStackParamList = {
-  Home: undefined;
-  CheckIn: undefined;
-  Reflection: { type: 'worry' | 'priority' };
-  TimeEntry: undefined;
-  Calendar: undefined;
-  Insights: undefined;
+  TimeTracking: undefined;
+  CheckInReview: undefined;
   Settings: undefined;
 };
 
@@ -100,4 +118,28 @@ export interface TagInputProps {
   suggestions: string[];
   onTagsChange: (tags: string[]) => void;
   placeholder?: string;
+}
+
+// New Component Props for Morning Check-in
+export interface MorningCheckInModalProps {
+  isVisible: boolean;
+  onComplete: (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => void;
+  currentPrompt: string;
+}
+
+export interface SideMenuProps {
+  isVisible: boolean;
+  onClose: () => void;
+  hasCompletedCheckIn: boolean;
+  onViewCheckIn: () => void;
+}
+
+export interface HamburgerButtonProps {
+  onPress: () => void;
+  isMenuOpen: boolean;
+}
+
+export interface CheckInReviewPanelProps {
+  checkInData: MorningCheckInData;
+  onBack: () => void;
 }
