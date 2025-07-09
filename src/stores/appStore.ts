@@ -51,13 +51,15 @@ interface AppState {
 
   addInsight: (insight: Omit<Insight, 'id' | 'created_at'>) => void;
 
-  // Morning Check-in Actions (New)
+  // Morning Check-in Actions (Enhanced for Phase 3)
   completeMorningCheckIn: (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => void;
   shouldShowMorningModal: () => boolean;
   resetMorningCheckIn: () => void;
   getCurrentPrompt: () => string;
   cycleToNextPrompt: () => void;
   setModalVisibility: (visible: boolean) => void;
+  checkForNewDay: () => void;
+  initializeMorningCheckIn: () => Promise<boolean>;
 
   // Getters
   getCheckInByDate: (date: Date) => EmotionalCheckIn | undefined;
@@ -78,16 +80,50 @@ const isSameDate = (date1: Date, date2: Date) => {
   return date1.toDateString() === date2.toDateString();
 };
 
-// Helper function to format date as YYYY-MM-DD
+// Enhanced helper function to format date as YYYY-MM-DD with timezone handling
 const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0];
+  // Use local timezone for consistent date calculation
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
-// Helper function to check if it's after 5 AM
-const isMorningTime = (): boolean => {
-  const now = new Date();
-  const hour = now.getHours();
+// Enhanced helper function to check if it's morning time (after 5 AM)
+const isMorningTime = (date: Date = new Date()): boolean => {
+  const hour = date.getHours();
   return hour >= 5;
+};
+
+// Helper to check if it's a new day since last check-in
+const isNewDay = (lastCheckInDate: string | null, currentDate: Date): boolean => {
+  if (!lastCheckInDate) return true;
+  
+  const today = formatDate(currentDate);
+  return lastCheckInDate !== today;
+};
+
+// Helper to determine if we should show morning modal
+const shouldShowModalLogic = (state: MorningCheckInState, currentTime: Date = new Date()): boolean => {
+  const today = formatDate(currentTime);
+  
+  // Don't show if already completed today
+  if (state.isCompleted && state.data?.date === today) {
+    return false;
+  }
+  
+  // Don't show if it's before 5 AM
+  if (!isMorningTime(currentTime)) {
+    return false;
+  }
+  
+  // Don't show if manually hidden and not a new day
+  if (!state.shouldShowModal && state.data?.date === today) {
+    return false;
+  }
+  
+  // Show if it's a new day and after 5 AM
+  return isNewDay(state.data?.date || null, currentTime);
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -212,7 +248,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
-  // Morning Check-in Actions (New)
+  // Enhanced Morning Check-in Actions (Phase 3)
   completeMorningCheckIn: (checkInData) => {
     const completedData: MorningCheckInData = {
       ...checkInData,
@@ -233,14 +269,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   shouldShowMorningModal: () => {
     const { morningCheckIn } = get();
-    const today = formatDate(new Date());
-    const lastCompletedDate = morningCheckIn.data?.date;
-
-    return (
-      isMorningTime() && 
-      !morningCheckIn.isCompleted && 
-      lastCompletedDate !== today
-    );
+    return shouldShowModalLogic(morningCheckIn);
   },
 
   resetMorningCheckIn: () => {
@@ -249,8 +278,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...state.morningCheckIn,
         isCompleted: false,
         completedAt: null,
-        data: null,
         shouldShowModal: false,
+        // Keep existing data and prompt index for reference
       },
     }));
   },
@@ -286,6 +315,56 @@ export const useAppStore = create<AppState>((set, get) => ({
         shouldShowModal: visible,
       },
     }));
+  },
+
+  // New Phase 3 method: Check for new day and handle transitions
+  checkForNewDay: () => {
+    const { morningCheckIn } = get();
+    const now = new Date();
+    const today = formatDate(now);
+    
+    // If it's a new day, reset the morning check-in state
+    if (isNewDay(morningCheckIn.data?.date || null, now)) {
+      set((state) => ({
+        morningCheckIn: {
+          ...state.morningCheckIn,
+          isCompleted: false,
+          completedAt: null,
+          shouldShowModal: shouldShowModalLogic(state.morningCheckIn, now),
+        },
+      }));
+      
+      // Cycle to next prompt for the new day
+      get().cycleToNextPrompt();
+    }
+  },
+
+  // New Phase 3 method: Initialize morning check-in on app launch
+  initializeMorningCheckIn: async (): Promise<boolean> => {
+    try {
+      const now = new Date();
+      const { morningCheckIn } = get();
+      
+      // Check if it's a new day
+      get().checkForNewDay();
+      
+      // Determine if modal should show
+      const shouldShow = shouldShowModalLogic(get().morningCheckIn, now);
+      
+      if (shouldShow) {
+        set((state) => ({
+          morningCheckIn: {
+            ...state.morningCheckIn,
+            shouldShowModal: true,
+          },
+        }));
+      }
+      
+      return shouldShow;
+    } catch (error) {
+      console.error('Error initializing morning check-in:', error);
+      return false;
+    }
   },
 
   // Getters
