@@ -3,12 +3,11 @@ import { Platform } from 'react-native';
 // Centralized database service import utility
 let databaseService: any = null;
 
-if (Platform.OS !== 'web') {
-  try {
-    databaseService = require('../services/database').databaseService;
-  } catch (error) {
-    console.log('Database service not available on this platform');
-  }
+try {
+  // Import the appropriate database service based on platform
+  databaseService = require('../services/database').databaseService;
+} catch (error) {
+  console.log('Database service not available on this platform');
 }
 
 export { databaseService };

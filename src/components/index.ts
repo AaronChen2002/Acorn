@@ -1,3 +1,5 @@
+export { ActivityCreationModal } from './ActivityCreationModal';
+export { CalendarGrid } from './CalendarGrid';
 export { CalendarTimeSlotPicker } from './CalendarTimeSlotPicker';
 export { CategoryDropdown } from './CategoryDropdown';
 export { CategorySelector } from './CategorySelector';

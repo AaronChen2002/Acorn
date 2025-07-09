@@ -203,7 +203,6 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
                 textAlignVertical="top"
                 accessibilityLabel="Reflection response"
                 accessibilityHint="Enter your thoughts about the morning reflection prompt"
-                accessibilityMultiline={true}
               />
               <Text style={styles.characterCount}>
                 {reflectionResponse.length}/1000 characters
@@ -228,7 +227,6 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
                 textAlignVertical="top"
                 accessibilityLabel="Additional notes"
                 accessibilityHint="Optional notes about your morning"
-                accessibilityMultiline={true}
               />
               <Text style={styles.characterCount}>
                 {notes.length}/500 characters

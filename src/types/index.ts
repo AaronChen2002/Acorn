@@ -144,3 +144,6 @@ export interface CheckInReviewPanelProps {
   checkInData: MorningCheckInData;
   onBack: () => void;
 }
+
+// Re-export calendar types for convenience
+export * from './calendar';

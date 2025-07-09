@@ -1,5 +1,7 @@
 import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
 import { EmotionalCheckIn, Reflection, TimeEntry, Insight, MorningCheckInData } from '../types';
+import { CalendarTimeEntry } from '../types/calendar';
 import { DB_CONFIG } from '../constants';
 
 // Database result type definitions
@@ -53,6 +55,21 @@ interface InsightRow {
   date_range_start: string;
   date_range_end: string;
   created_at: string;
+}
+
+interface CalendarTimeEntryRow {
+  id: string;
+  date: string;
+  activity: string;
+  category: string;
+  start_time: string;
+  end_time: string;
+  duration: number;
+  mood_rating: number | null;
+  emotional_tags: string;
+  reflection: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 class DatabaseService {
@@ -129,6 +146,24 @@ class DatabaseService {
         date_range_start TEXT,
         date_range_end TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Calendar time entries table (Phase 6)
+    this.db.execSync(`
+      CREATE TABLE IF NOT EXISTS calendar_time_entries (
+        id TEXT PRIMARY KEY,
+        date TEXT NOT NULL,
+        activity TEXT NOT NULL,
+        category TEXT NOT NULL,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
+        duration INTEGER NOT NULL,
+        mood_rating INTEGER,
+        emotional_tags TEXT,
+        reflection TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
       )
     `);
   }
@@ -363,13 +398,128 @@ class DatabaseService {
     }
   }
 
+  // Calendar time entry operations (Phase 6)
+  async saveCalendarTimeEntry(entry: CalendarTimeEntry): Promise<void> {
+    const statement = this.db.prepareSync(
+      `INSERT OR REPLACE INTO calendar_time_entries 
+       (id, date, activity, category, start_time, end_time, duration, mood_rating, emotional_tags, reflection, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+
+    try {
+      statement.executeSync([
+        entry.id,
+        entry.date,
+        entry.activity,
+        entry.category,
+        entry.startTime.toISOString(),
+        entry.endTime.toISOString(),
+        entry.duration,
+        entry.moodRating || null,
+        JSON.stringify(entry.emotionalTags),
+        entry.reflection || null,
+        entry.createdAt.toISOString(),
+        entry.updatedAt.toISOString(),
+      ]);
+    } finally {
+      statement.finalizeSync();
+    }
+  }
+
+  async getCalendarTimeEntries(): Promise<CalendarTimeEntry[]> {
+    const result = this.db.getAllSync(
+      'SELECT * FROM calendar_time_entries ORDER BY date DESC, start_time DESC'
+    ) as CalendarTimeEntryRow[];
+
+    return result.map((row) => ({
+      id: row.id,
+      date: row.date,
+      activity: row.activity,
+      category: row.category,
+      startTime: new Date(row.start_time),
+      endTime: new Date(row.end_time),
+      duration: row.duration,
+      moodRating: row.mood_rating || undefined,
+      emotionalTags: JSON.parse(row.emotional_tags || '[]'),
+      reflection: row.reflection || undefined,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+    }));
+  }
+
+  async getCalendarTimeEntriesForDate(date: string): Promise<CalendarTimeEntry[]> {
+    const result = this.db.getAllSync(
+      'SELECT * FROM calendar_time_entries WHERE date = ? ORDER BY start_time ASC',
+      [date]
+    ) as CalendarTimeEntryRow[];
+
+    return result.map((row) => ({
+      id: row.id,
+      date: row.date,
+      activity: row.activity,
+      category: row.category,
+      startTime: new Date(row.start_time),
+      endTime: new Date(row.end_time),
+      duration: row.duration,
+      moodRating: row.mood_rating || undefined,
+      emotionalTags: JSON.parse(row.emotional_tags || '[]'),
+      reflection: row.reflection || undefined,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+    }));
+  }
+
+  async updateCalendarTimeEntry(id: string, updates: Partial<CalendarTimeEntry>): Promise<void> {
+    // First get the existing entry
+    const existing = this.db.getFirstSync(
+      'SELECT * FROM calendar_time_entries WHERE id = ?',
+      [id]
+    ) as CalendarTimeEntryRow | null;
+
+    if (!existing) {
+      throw new Error('Calendar time entry not found');
+    }
+
+    // Merge updates with existing data
+    const updatedEntry: CalendarTimeEntry = {
+      id: existing.id,
+      date: existing.date,
+      activity: updates.activity || existing.activity,
+      category: updates.category || existing.category,
+      startTime: updates.startTime || new Date(existing.start_time),
+      endTime: updates.endTime || new Date(existing.end_time),
+      duration: updates.duration || existing.duration,
+      moodRating: updates.moodRating !== undefined ? updates.moodRating : (existing.mood_rating || undefined),
+      emotionalTags: updates.emotionalTags || JSON.parse(existing.emotional_tags || '[]'),
+      reflection: updates.reflection !== undefined ? updates.reflection : (existing.reflection || undefined),
+      createdAt: new Date(existing.created_at),
+      updatedAt: new Date(),
+    };
+
+    // Save the updated entry
+    await this.saveCalendarTimeEntry(updatedEntry);
+  }
+
+  async deleteCalendarTimeEntry(id: string): Promise<void> {
+    const statement = this.db.prepareSync('DELETE FROM calendar_time_entries WHERE id = ?');
+    try {
+      statement.executeSync([id]);
+    } finally {
+      statement.finalizeSync();
+    }
+  }
+
   async clearAllData(): Promise<void> {
     this.db.execSync('DELETE FROM check_ins');
     this.db.execSync('DELETE FROM morning_checkins');
     this.db.execSync('DELETE FROM reflections');
     this.db.execSync('DELETE FROM time_entries');
     this.db.execSync('DELETE FROM insights');
+    this.db.execSync('DELETE FROM calendar_time_entries');
   }
 }
 
-export const databaseService = new DatabaseService();
+import { webDatabaseService } from './webDatabase';
+
+// Use web-compatible database service for web platform
+export const databaseService = Platform.OS === 'web' ? webDatabaseService : new DatabaseService();
