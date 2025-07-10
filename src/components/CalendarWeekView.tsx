@@ -12,8 +12,6 @@ import {
 import { CalendarTimeEntry, CalendarSelection, TimeSlot, generateTimeSlots, getWeekDates, formatTimeSlot } from '../types/calendar';
 import { useTheme } from '../utils/theme';
 
-const { width: screenWidth } = Dimensions.get('window');
-
 interface CalendarWeekViewProps {
   selectedDate: Date;
   timeEntries: CalendarTimeEntry[];
@@ -28,7 +26,6 @@ interface CalendarWeekViewProps {
 const SLOT_HEIGHT = 40; // Smaller slots for week view
 const HOUR_SLOTS = 4; // 4 slots per hour (15-minute increments)
 const TIME_LABEL_WIDTH = 60;
-const DAY_COLUMN_WIDTH = (screenWidth - TIME_LABEL_WIDTH) / 7;
 const GRID_START_HOUR = 6;
 const GRID_END_HOUR = 23;
 
@@ -47,10 +44,12 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   const [dragStart, setDragStart] = useState<Date | null>(null);
   const [dragCurrent, setDragCurrent] = useState<Date | null>(null);
   const [dragDay, setDragDay] = useState<Date | null>(null);
+  const [containerWidth, setContainerWidth] = useState(Dimensions.get('window').width);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const weekDates = getWeekDates(selectedDate);
   const timeSlots = generateTimeSlots(new Date(), GRID_START_HOUR, GRID_END_HOUR, 15);
+  const DAY_COLUMN_WIDTH = (containerWidth - TIME_LABEL_WIDTH) / 7;
 
   // Get time entries for a specific date
   const getTimeEntriesForDate = (date: Date): CalendarTimeEntry[] => {
@@ -445,7 +444,13 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   });
 
   return (
-    <View style={styles.container}>
+    <View 
+      style={styles.container}
+      onLayout={(event) => {
+        const { width } = event.nativeEvent.layout;
+        setContainerWidth(width);
+      }}
+    >
       {/* Day headers */}
       <View style={styles.dayHeaders}>
         <View style={styles.timeHeaderSpacer} />

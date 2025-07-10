@@ -10,95 +10,109 @@ Acorn is a **morning ritual and mindful productivity app** that combines:
 - **📊 Mood & Behavior Analytics**: Correlations between activities, emotions, and productivity
 - **🤖 AI-Powered Insights**: Contextual analysis of quantitative and qualitative data for personalized recommendations
 
-## ✅ Current Features (Phases 1-5 Complete)
+## ✅ Current Features (Phases 1-6 Complete)
 
 ### 🌅 Morning Ritual System
 - **Time-based modal** that appears after 5 AM daily
 - **Warm sunrise theme** with beautiful visual design
 - **Mood tracking** with custom slider components (energy & positivity levels)
 - **Emotion selection** with emoji-based grid interface
-- **Daily reflection prompts** with cycling questions for deeper self-awareness
+- **AI-powered personalized reflection prompts** that adapt to your patterns
 - **Smart validation** requiring minimum engagement for meaningful data
+- **Test mode toggle** for development and privacy control
+
+### 📅 Interactive Calendar Time Tracking
+- **Google Calendar-style visual interface** with 24-hour day view
+- **Drag-to-select time slots** for intuitive activity creation
+- **Real-time activity modal** with rich emotional context capture
+- **Activity categorization** with AI-powered suggestions
+- **Mood rating and emotional tags** for each activity
+- **Quick reflection text** to capture context and insights
+- **Smart conflict detection** preventing overlapping activities
+- **Multiple view modes**: Week and Month views with dynamic width calculations
+
+### 🤖 AI-Powered Insights with Long-term Caching
+- **Intelligent pattern recognition** analyzing your check-ins and activities
+- **Personalized weekly insights** with trend analysis and correlations
+- **Smart caching system** for instant loading and performance optimization
+- **Data hash validation** to detect changes and refresh insights when needed
+- **Long-term analysis** supporting weekly, monthly, and quarterly periods
+- **Test mode support** using sample data for development and privacy
+- **Dynamic insight generation** showing 1-10+ insights based on actual patterns
 
 ### 🍃 Streamlined Navigation
 - **Time tracking as primary interface** - focus on daily productivity
-- **Hamburger side menu** - clean, minimal navigation
+- **Hamburger side menu** - clean, minimal navigation with developer settings
 - **Check-in review panel** - access completed morning rituals
+- **Insights screen** - dedicated space for AI-generated pattern analysis
 - **No tabs** - reduced cognitive load with single-screen focus
 
 ### ♿ Accessibility & Polish
 - **Full screen reader support** with comprehensive accessibility labels
 - **Smooth animations** with loading states and transitions
 - **Cross-platform compatibility** (web, iOS, Android)
-- **No external dependencies** for core functionality
+- **Performance optimized** with database indexing and efficient queries
 - **Warm morning color palette** for calming, intentional experience
 
-## 🚀 Upcoming Features (Phases 6-9 Roadmap)
+## 🚀 Upcoming Features (Phases 7-9 Roadmap)
 
-### Phase 6: Interactive Calendar Time Tracking (Next 2-3 weeks)
-**Goal**: Google Calendar-style visual time tracking
-
-- **📅 Calendar grid component** with 24-hour day view in 15-minute increments
-- **🖱️ Drag-to-select time slots** for intuitive activity creation
-- **⚡ Real-time activity modal** with rich emotional context capture:
-  - Activity description and category
-  - "How did it go?" mood rating (1-6 scale with emojis)
-  - Emotional tags (focused, stressed, collaborative, etc.)
-  - Quick reflection text
-- **🎯 Smart conflict detection** preventing overlapping activities
-- **📱 Mobile-optimized** touch interactions
-
-### Phase 7: Enhanced Calendar Features (Weeks 4-6)
+### Phase 7: Enhanced Calendar Features (Next 2-3 weeks)
 **Goal**: Professional-grade calendar functionality
 
-- **📊 Multiple view modes**: Day, Week, Month views
 - **✋ Drag and drop**: Resize and move existing activities
 - **🔍 Activity management**: Edit, delete, search, and filter
 - **📋 Activity templates** for quick entry of common tasks
 - **⏰ Current time indicator** showing real-time progress
+- **🎯 Smart scheduling suggestions** based on energy patterns
+- **📱 Enhanced mobile interactions** with gesture support
 
-### Phase 8: Data Visualization & Pattern Recognition (Weeks 7-9)
+### Phase 8: Advanced Data Visualization (Weeks 4-6)
 **Goal**: Beautiful analytics and behavioral insights
 
 - **📈 Time allocation analytics** with interactive pie charts and breakdowns
 - **😊 Mood correlation charts** showing how activities affect emotional state
 - **⚡ Energy level trends** throughout different times of day
 - **🧠 Productivity patterns** identifying peak performance windows
-- **📊 Weekly comparisons** and progress tracking
+- **📊 Weekly/monthly comparisons** and progress tracking
 - **🎨 Activity heatmaps** for visual pattern recognition
+- **🔄 Insight trend analysis** showing how patterns evolve over time
 
-### Phase 9: AI-Powered Contextual Insights (Weeks 10-12)
-**Goal**: Intelligent analysis of quantitative and qualitative data
+### Phase 9: Enhanced AI & Personalization (Weeks 7-9)
+**Goal**: Deeper intelligence and contextual recommendations
 
-#### 🤖 **AI Data Integration**
-- **Quantitative analysis**: Time patterns, mood scores, activity duration
-- **Qualitative analysis**: Natural language processing of reflection text and activity descriptions
-- **Behavioral pattern detection**: Correlation between emotions, activities, and productivity
-- **Contextual recommendations**: Personalized suggestions based on individual patterns
+#### 🤖 **Advanced AI Features**
+- **Predictive insights**: Forecast energy levels and productivity patterns
+- **Contextual recommendations**: Personalized suggestions based on current state
+- **Natural language queries**: "How do I feel after morning workouts?"
+- **Smart scheduling**: AI-suggested optimal timing for different activities
+- **Habit formation tracking**: Monitor and encourage positive behavioral changes
 
-#### 🧠 **Smart Insights Engine**
-- **"You're most creative on Tuesday mornings"** - temporal productivity patterns
-- **"Meetings after lunch tend to lower your energy"** - activity-mood correlations  
-- **"Your reflection mentions 'stress' 60% more on Mondays"** - emotional pattern detection
-- **"You have 2 unscheduled hours during your peak focus time"** - optimization suggestions
-- **"Your energy peaks when you complete morning check-ins"** - ritual effectiveness tracking
+#### 🧠 **Enhanced Insights Engine**
+- **Cross-period analysis**: Compare patterns across weeks, months, and seasons
+- **Goal achievement correlation**: Link daily habits to long-term objective completion
+- **Stress pattern recognition**: Identify and suggest mitigation strategies
+- **Productivity optimization**: Personalized recommendations for peak performance
+- **Emotional intelligence**: Deep understanding of mood triggers and patterns
 
 #### 📱 **Intelligent Notifications**
 - **Gentle nudges** based on behavioral patterns (not intrusive)
 - **Optimal scheduling suggestions** for different activity types
 - **Mood-based recommendations** for break timing and activity selection
 - **Weekly reflection summaries** with AI-generated insights
+- **Proactive wellness suggestions** based on detected patterns
 
 ## 🛠️ Technical Stack
 
 - **Framework**: React Native + Expo (cross-platform)
 - **Language**: TypeScript (strict mode)
 - **State Management**: Zustand (lightweight, performant)
-- **Database**: SQLite (expo-sqlite) for local-first storage
+- **Database**: SQLite (expo-sqlite) with optimized schemas and indexing
 - **UI Components**: Custom component library with warm morning theme
 - **Calendar Engine**: Custom-built Google Calendar-style grid system
-- **AI Integration**: OpenAI API for natural language processing and pattern analysis
+- **AI Integration**: OpenAI API with intelligent caching and pattern analysis
+- **Caching System**: Long-term insight caching with data hash validation
 - **Charts**: Custom data visualization components
+- **Performance**: Database indexing, efficient queries, and smart caching
 
 ## 📦 Installation & Setup
 
@@ -143,11 +157,17 @@ npx tsc --noEmit
 Acorn/
 ├── src/
 │   ├── components/
-│   │   ├── calendar/                 # Calendar system (Phase 6-7)
-│   │   │   ├── CalendarTimeGrid.tsx
-│   │   │   ├── TimeSlotSelector.tsx
+│   │   ├── calendar/                 # Calendar system ✅
+│   │   │   ├── CalendarGrid.tsx
+│   │   │   ├── CalendarHeader.tsx
+│   │   │   ├── CalendarMonthView.tsx
+│   │   │   ├── CalendarWeekView.tsx
+│   │   │   ├── CalendarTimeSlotPicker.tsx
 │   │   │   ├── ActivityCreationModal.tsx
-│   │   │   └── ActivityCard.tsx
+│   │   │   ├── CategorySelector.tsx
+│   │   │   ├── CategoryDropdown.tsx
+│   │   │   ├── TimePicker.tsx
+│   │   │   └── ViewModeSwitcher.tsx
 │   │   ├── morning/                  # Morning check-in system ✅
 │   │   │   ├── MorningCheckInModal.tsx
 │   │   │   ├── MoodSlider.tsx
@@ -157,35 +177,34 @@ Acorn/
 │   │   │   ├── TopNavigation.tsx
 │   │   │   ├── SideMenu.tsx
 │   │   │   └── HamburgerButton.tsx
-│   │   └── analytics/                # Data visualization (Phase 8)
-│   │       ├── TimeBreakdownChart.tsx
-│   │       ├── MoodTrendChart.tsx
-│   │       └── InsightCard.tsx
+│   │   └── TagInput.tsx              # Shared components
 │   ├── screens/
 │   │   ├── TimeTrackingScreen.tsx    # Primary interface ✅
-│   │   └── AnalyticsScreen.tsx       # Future analytics dashboard
+│   │   ├── CheckInScreen.tsx         # Morning check-in screen ✅
+│   │   ├── DailyPromptScreen.tsx     # Daily prompts screen ✅
+│   │   └── InsightsScreen.tsx        # AI insights dashboard ✅
 │   ├── services/
-│   │   ├── database.ts               # SQLite operations ✅
-│   │   ├── aiInsights.ts             # OpenAI integration (Phase 9)
-│   │   └── analytics.ts              # Data processing (Phase 8)
+│   │   ├── database.ts               # SQLite operations with caching ✅
+│   │   ├── webDatabase.ts            # Web-compatible database ✅
+│   │   └── aiService.ts              # OpenAI integration with caching ✅
 │   ├── stores/
-│   │   ├── appStore.ts               # Main Zustand store ✅
-│   │   ├── calendarStore.ts          # Calendar state (Phase 6)
-│   │   └── analyticsStore.ts         # Analytics state (Phase 8)
+│   │   ├── appStore.ts               # Main Zustand store with caching ✅
+│   │   └── calendarStore.ts          # Calendar state management ✅
 │   ├── types/
-│   │   ├── index.ts                  # Core types ✅
-│   │   ├── calendar.ts               # Calendar-specific types
-│   │   └── analytics.ts              # Analytics types
+│   │   ├── index.ts                  # Core types with insights ✅
+│   │   └── calendar.ts               # Calendar-specific types ✅
 │   ├── constants/
 │   │   └── index.ts                  # Theme, emotions, prompts ✅
 │   └── utils/
 │       ├── morningDetection.ts       # Time-based logic ✅
-│       ├── calendarUtils.ts          # Calendar calculations
-│       └── aiUtils.ts                # AI processing helpers
+│       ├── database.ts               # Database utilities ✅
+│       ├── theme.ts                  # Theme utilities ✅
+│       └── insightCache.ts           # Caching utilities ✅
 ├── docs/                             # Comprehensive documentation
 │   ├── ARCHITECTURE.md               # System design
 │   ├── COMPONENTS.md                 # Component documentation
 │   ├── DATA_MODELS.md                # Database schemas
+│   ├── DEVELOPMENT.md                # Development guide
 │   ├── IMPLEMENTATION_PLAN.md        # Phase-by-phase plan
 │   └── PRD_MORNING_CHECKIN_RESTRUCTURE.md
 ├── assets/                           # Static assets
@@ -200,18 +219,35 @@ Acorn/
 - **Qualitative text**: Morning reflections, activity descriptions, notes
 - **Behavioral patterns**: App usage timing, feature engagement, ritual consistency
 - **Contextual data**: Day of week, time of day, activity categories, emotional states
+- **Goal tracking**: Daily intentions, completion rates, and pattern analysis
 
-### AI Processing Pipeline
+### Enhanced AI Processing Pipeline
 ```
-User Input → Local Database → Privacy-First Processing → OpenAI API → 
-Pattern Analysis → Personalized Insights → Gentle Recommendations
+User Input → Local Database → Data Hash Generation → Cache Check → 
+AI Analysis (if needed) → Pattern Recognition → Personalized Insights → 
+Long-term Caching → Intelligent Recommendations
 ```
+
+### Smart Caching System
+- **Data hash validation**: Detects changes to invalidate stale insights
+- **Time-based periods**: Weekly, monthly, quarterly analysis with proper boundaries
+- **Performance optimization**: Instant loading with 24-hour cache expiration
+- **Database indexing**: Efficient queries with optimized schemas
+- **Cleanup management**: Automatic removal of outdated insights
+
+### AI-Powered Features
+- **Activity categorization**: Intelligent classification of user activities
+- **Personalized prompts**: Dynamic reflection questions based on patterns
+- **Pattern recognition**: Correlations between sleep, energy, activities, and mood
+- **Trend analysis**: Long-term behavior and productivity pattern identification
+- **Contextual insights**: Specific, actionable recommendations with emoji icons
 
 ### Privacy & Ethics
 - **Local-first**: All data stored locally with optional cloud sync
-- **Anonymized processing**: Personal identifiers removed before AI analysis
+- **Test mode**: Sample data processing for development and privacy control
 - **User control**: Full data export, deletion, and AI opt-out capabilities
 - **Transparent insights**: Clear explanation of how recommendations are generated
+- **No personal assumptions**: Generic insights that avoid specific life circumstances
 
 ## 📱 User Experience Philosophy
 

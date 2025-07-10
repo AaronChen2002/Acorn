@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import {
 import { TagInput } from './TagInput';
 import { CalendarTimeEntry, TimeSlot, ActivityCreationData, EMOTIONAL_TAGS, MOOD_RATINGS, formatTimeSlot } from '../types/calendar';
 import { useTheme } from '../utils/theme';
+import { aiService, ActivityCategory } from '../services/aiService';
+import { useAppStore } from '../stores/appStore';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -35,11 +37,16 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
   onDelete,
 }) => {
   const { theme } = useTheme();
+  const testMode = useAppStore((state) => state.testMode);
   const [activity, setActivity] = useState('');
   const [moodRating, setMoodRating] = useState<number | undefined>(undefined);
   const [selectedEmotionalTags, setSelectedEmotionalTags] = useState<string[]>([]);
   const [reflection, setReflection] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // AI Categorization state (background only)
+  const [aiCategory, setAiCategory] = useState<ActivityCategory>('General');
+  const [categorizationTimeout, setCategorizationTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const isEditing = !!editingEntry;
 
@@ -55,12 +62,59 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
     }
   }, [editingEntry, isVisible]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (categorizationTimeout) {
+        clearTimeout(categorizationTimeout);
+      }
+    };
+  }, [categorizationTimeout]);
+
   const resetForm = () => {
     setActivity('');
     setMoodRating(undefined);
     setSelectedEmotionalTags([]);
     setReflection('');
+    setAiCategory('General');
+    if (categorizationTimeout) {
+      clearTimeout(categorizationTimeout);
+      setCategorizationTimeout(null);
+    }
   };
+
+  // AI Categorization function (background only)
+  const categorizeActivity = useCallback(async (activityText: string) => {
+    if (!activityText.trim() || activityText.trim().length < 3) {
+      setAiCategory('General');
+      return;
+    }
+    
+    try {
+      const result = await aiService.categorizeActivity(activityText, reflection, testMode);
+      setAiCategory(result.category);
+    } catch (error) {
+      console.error('Failed to categorize activity:', error);
+      setAiCategory('General');
+    }
+  }, [reflection, testMode]);
+
+  // Debounced activity change handler
+  const handleActivityChange = useCallback((text: string) => {
+    setActivity(text);
+    
+    // Clear existing timeout
+    if (categorizationTimeout) {
+      clearTimeout(categorizationTimeout);
+    }
+    
+    // Set new timeout for AI categorization
+    const timeout = setTimeout(() => {
+      categorizeActivity(text);
+    }, 1000); // Wait 1 second after user stops typing
+    
+    setCategorizationTimeout(timeout);
+  }, [categorizeActivity, categorizationTimeout]);
 
   const validateForm = (): boolean => {
     if (activity.trim().length < 2) {
@@ -92,7 +146,7 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
     try {
       const activityData: ActivityCreationData = {
         activity: activity.trim(),
-        category: 'general', // Default category - will be auto-categorized later
+        category: aiCategory.toLowerCase(), // Use AI-categorized result
         moodRating,
         emotionalTags: selectedEmotionalTags,
         reflection: reflection.trim() || undefined,
@@ -373,7 +427,7 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
               <TextInput
                 style={styles.activityInput}
                 value={activity}
-                onChangeText={setActivity}
+                onChangeText={handleActivityChange}
                 placeholder="e.g., Team standup, Deep work on project X, Lunch break..."
                 placeholderTextColor={theme.colors.textSecondary}
                 multiline

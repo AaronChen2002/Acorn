@@ -28,10 +28,16 @@ export const SideMenu: React.FC<SideMenuProps> = ({
 }) => {
   const { theme } = useTheme();
   const morningCheckIn = useAppStore((state) => state.morningCheckIn);
+  const testMode = useAppStore((state) => state.testMode);
+  const setTestMode = useAppStore((state) => state.setTestMode);
   
   const handleNavigate = (screen: string) => {
     onNavigate(screen);
     onClose();
+  };
+
+  const toggleTestMode = () => {
+    setTestMode(!testMode);
   };
 
   const menuItems = [
@@ -48,6 +54,13 @@ export const SideMenu: React.FC<SideMenuProps> = ({
       subtitle: morningCheckIn.isCompleted ? 'Completed today' : 'Pending',
       icon: '🌅',
       screen: 'morning',
+    },
+    {
+      id: 'insights',
+      title: 'Weekly Insights',
+      subtitle: 'Patterns and trends',
+      icon: '📊',
+      screen: 'insights',
     },
   ];
 
@@ -293,6 +306,26 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                   </View>
                 </View>
               )}
+
+              {/* Test Mode Toggle */}
+              <View style={styles.statusSection}>
+                <Text style={styles.statusTitle}>Developer Settings</Text>
+                <TouchableOpacity
+                  style={styles.statusCard}
+                  onPress={toggleTestMode}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.statusRow}>
+                    <Text style={styles.statusLabel}>🧪 Test Mode:</Text>
+                    <Text style={[styles.statusValue, { color: testMode ? '#10b981' : '#ef4444' }]}>
+                      {testMode ? 'ON' : 'OFF'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.statusLabel, { fontSize: 12, marginTop: 4 }]}>
+                    {testMode ? 'Using sample data for AI' : 'Using real user data'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Footer */}
               <View style={styles.footer}>

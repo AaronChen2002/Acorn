@@ -1,15 +1,17 @@
 # Data Models & API Reference
 
-This document provides comprehensive information about the data models, database structure, and API design for the Acorn app.
+This document provides comprehensive information about the data models, database structure, and API design for the Acorn app, including AI integration and caching systems.
 
 ## 📋 Table of Contents
 
 1. [Data Models](#data-models)
 2. [Database Schema](#database-schema)
-3. [Store API](#store-api)
-4. [Data Flow](#data-flow)
-5. [Constants & Enums](#constants--enums)
-6. [Validation Rules](#validation-rules)
+3. [AI Integration Models](#ai-integration-models)
+4. [Caching Models](#caching-models)
+5. [Store API](#store-api)
+6. [Data Flow](#data-flow)
+7. [Constants & Enums](#constants--enums)
+8. [Validation Rules](#validation-rules)
 
 ## 🏗️ Data Models
 
@@ -21,27 +23,52 @@ Represents a daily emotional check-in entry.
 ```typescript
 interface EmotionalCheckIn {
   id: string;                    // Unique identifier (UUID)
-  date: string;                  // ISO date string (YYYY-MM-DD)
+  date: Date;                    // Date object
   energyLevel: number;           // 1-10 scale
   positivityLevel: number;       // 1-10 scale
   emotions: string[];            // Array of emotion keys
-  notes: string;                 // Free-form text (max 1000 chars)
-  createdAt: string;            // ISO timestamp
-  updatedAt: string;            // ISO timestamp
+  description?: string;          // Optional description
+  created_at: Date;              // Timestamp
+}
+```
+
+#### MorningCheckInData
+Represents comprehensive morning ritual data with AI-powered prompts.
+
+```typescript
+interface MorningCheckInData {
+  id: string;                    // Unique identifier (UUID)
+  date: string;                  // ISO date string (YYYY-MM-DD)
+  energyLevel: number;           // 1-5 scale
+  positivityLevel: number;       // 1-5 scale
+  focusLevel: number;            // 1-5 scale
+  sleepQuality: number;          // 1-5 scale
+  yesterdayCompletion: number;   // 1-5 scale
+  emotions: string[];            // Array of emotion keys
+  reflectionPrompt: string;      // AI-generated or static prompt
+  reflectionResponse: string;    // User's response to prompt
+  mainGoal: string;              // Main goal for today
+  notes?: string;                // Optional additional notes
+  completedAt: Date;             // When the check-in was completed
 }
 ```
 
 **Example:**
 ```typescript
-const checkIn: EmotionalCheckIn = {
+const morningCheckIn: MorningCheckInData = {
   id: "550e8400-e29b-41d4-a716-446655440000",
   date: "2024-01-15",
-  energyLevel: 7,
-  positivityLevel: 8,
-  emotions: ["happy", "excited", "focused"],
-  notes: "Great start to the week! Feeling energized about the new project.",
-  createdAt: "2024-01-15T09:30:00.000Z",
-  updatedAt: "2024-01-15T09:30:00.000Z"
+  energyLevel: 4,
+  positivityLevel: 5,
+  focusLevel: 3,
+  sleepQuality: 4,
+  yesterdayCompletion: 3,
+  emotions: ["motivated", "optimistic", "focused"],
+  reflectionPrompt: "What energy management strategy could help you maintain focus throughout your day?",
+  reflectionResponse: "I'll try the Pomodoro technique with breaks every 25 minutes to maintain my energy levels.",
+  mainGoal: "Complete the quarterly report and review team feedback",
+  notes: "Feeling good about tackling the big project today",
+  completedAt: new Date("2024-01-15T07:30:00.000Z")
 };
 ```
 
@@ -76,58 +103,101 @@ const reflection: Reflection = {
 ```
 
 #### TimeEntry
-Represents a time tracking entry with emotional context.
+Represents a basic time tracking entry.
 
 ```typescript
 interface TimeEntry {
   id: string;                    // Unique identifier (UUID)
+  date: Date;                    // Date object
+  activity: string;              // Activity description
+  category: string;              // Category key
+  start_time: Date;              // Start time
+  end_time: Date;                // End time
+  tags: string[];                // Activity tags
+  created_at: Date;              // Timestamp
+}
+```
+
+#### CalendarTimeEntry
+Represents enhanced calendar time tracking with emotional context.
+
+```typescript
+interface CalendarTimeEntry {
+  id: string;                    // Unique identifier (UUID)
   date: string;                  // ISO date string (YYYY-MM-DD)
   activity: string;              // Activity description
   category: string;              // Category key
-  startTime: string;             // Time string (HH:MM)
-  endTime: string;               // Time string (HH:MM)
+  startTime: Date;               // Start time
+  endTime: Date;                 // End time
   duration: number;              // Duration in minutes
-  tags: string[];                // Activity tags including feelings
-  createdAt: string;            // ISO timestamp
-  updatedAt: string;            // ISO timestamp
+  moodRating?: number;           // 1-6 scale mood rating
+  emotionalTags: string[];       // Emotional context tags
+  reflection?: string;           // Optional reflection text
+  createdAt: Date;               // Created timestamp
+  updatedAt: Date;               // Updated timestamp
 }
 ```
 
 **Example:**
 ```typescript
-const timeEntry: TimeEntry = {
+const calendarEntry: CalendarTimeEntry = {
   id: "550e8400-e29b-41d4-a716-446655440002",
   date: "2024-01-15",
   activity: "Sprint planning meeting",
-  category: "meetings",
-  startTime: "09:00",
-  endTime: "10:30",
+  category: "Work",
+  startTime: new Date("2024-01-15T09:00:00.000Z"),
+  endTime: new Date("2024-01-15T10:30:00.000Z"),
   duration: 90,
-  tags: ["productive", "collaborative", "focused", "planning"],
-  createdAt: "2024-01-15T10:30:00.000Z",
-  updatedAt: "2024-01-15T10:30:00.000Z"
+  moodRating: 5,
+  emotionalTags: ["productive", "collaborative", "focused"],
+  reflection: "Great alignment on sprint goals. Team is motivated and clear on priorities.",
+  createdAt: new Date("2024-01-15T10:30:00.000Z"),
+  updatedAt: new Date("2024-01-15T10:30:00.000Z")
 };
 ```
 
-#### Insight (Future)
-Represents AI-generated insights and patterns.
+#### Insight
+Represents AI-generated insights and patterns with caching metadata.
 
 ```typescript
 interface Insight {
   id: string;                    // Unique identifier (UUID)
-  type: 'pattern' | 'trend' | 'recommendation';
-  title: string;                 // Insight title
-  description: string;           // Detailed description
-  dataSource: string[];          // Source data IDs
-  confidence: number;            // 0-1 confidence score
-  dateRange: {
-    start: string;               // ISO date string
-    end: string;                 // ISO date string
-  };
-  metadata: Record<string, any>; // Additional context
-  createdAt: string;            // ISO timestamp
-  isRead: boolean;              // User has seen this insight
+  content: string;               // Insight content/description
+  type: 'trend' | 'pattern' | 'correlation' | 'habit' | 'energy' | 'productivity';
+  icon: string;                  // Emoji icon for visual representation
+  timePeriod: 'week' | 'month' | 'quarter' | 'year';
+  periodStart: Date;             // Analysis period start
+  periodEnd: Date;               // Analysis period end
+  dataHash: string;              // Hash of source data for cache validation
+  dataVersion: number;           // Version of the data structure
+  generatedAt: Date;             // When the insight was generated
+  metadata?: Record<string, any>; // Additional context
+  createdAt: Date;               // Created timestamp
 }
+```
+
+**Example:**
+```typescript
+const insight: Insight = {
+  id: "550e8400-e29b-41d4-a716-446655440003",
+  content: "Your energy peaks on Tuesdays and Wednesdays (average 4.2/5). You report lowest energy on Mondays (3.1/5). Consider lighter schedules on Monday mornings.",
+  type: "pattern",
+  icon: "⚡",
+  timePeriod: "week",
+  periodStart: new Date("2024-01-15T00:00:00.000Z"),
+  periodEnd: new Date("2024-01-21T23:59:59.999Z"),
+  dataHash: "abc123def456",
+  dataVersion: 1,
+  generatedAt: new Date("2024-01-22T08:00:00.000Z"),
+  metadata: { 
+    averageEnergyByDay: { 
+      monday: 3.1, 
+      tuesday: 4.2, 
+      wednesday: 4.2 
+    } 
+  },
+  createdAt: new Date("2024-01-22T08:00:00.000Z")
+};
 ```
 
 ### Utility Types
@@ -158,27 +228,158 @@ interface DailyPrompt {
 
 ---
 
+## 🤖 AI Integration Models
+
+### AI Service Models
+
+#### ActivityCategorizationResult
+Represents the result of AI activity categorization.
+
+```typescript
+interface ActivityCategorizationResult {
+  category: ActivityCategory;    // Assigned category
+  confidence: number;            // 0-1 confidence score
+  reasoning?: string;            // Optional explanation
+}
+```
+
+#### PersonalizedPromptResult
+Represents an AI-generated personalized reflection prompt.
+
+```typescript
+interface PersonalizedPromptResult {
+  prompt: string;                // The generated prompt
+  context: string;               // Context explanation
+}
+```
+
+#### CachedInsight
+Represents an AI-generated insight in the format expected by the caching system.
+
+```typescript
+interface CachedInsight {
+  content: string;               // Insight content
+  type: 'trend' | 'pattern' | 'correlation' | 'habit' | 'energy' | 'productivity';
+  icon: string;                  // Emoji icon
+}
+```
+
+### AI Processing Models
+
+#### AIDataAggregation
+Represents aggregated data for AI processing.
+
+```typescript
+interface AIDataAggregation {
+  checkIns: MorningCheckInData[];
+  activities: CalendarTimeEntry[];
+  goals: string[];
+  timePeriod: 'week' | 'month' | 'quarter';
+  periodStart: Date;
+  periodEnd: Date;
+}
+```
+
+---
+
+## 📊 Caching Models
+
+### Cache Metadata
+
+#### CachedInsightResult
+Represents a complete cached insight result with metadata.
+
+```typescript
+interface CachedInsightResult {
+  insights: Array<{
+    id: number;
+    content: string;
+    type: string;
+    icon: string;
+  }>;
+  dataHash: string;
+  timePeriod: 'week' | 'month' | 'quarter';
+  periodStart: Date;
+  periodEnd: Date;
+}
+```
+
+#### CacheValidationResult
+Represents cache validation status.
+
+```typescript
+interface CacheValidationResult {
+  isValid: boolean;
+  reason?: 'data_changed' | 'expired' | 'missing';
+  currentHash: string;
+  cachedHash?: string;
+  cacheAge?: number;
+}
+```
+
+### Cache Utility Types
+
+#### TimePeriodBounds
+Represents time period boundaries for caching.
+
+```typescript
+interface TimePeriodBounds {
+  start: Date;
+  end: Date;
+}
+```
+
+#### DataHashComponents
+Represents the components used for data hash generation.
+
+```typescript
+interface DataHashComponents {
+  checkIns: string[];            // Serialized check-in data
+  activities: string[];          // Serialized activity data
+  goals: string[];               // Goal strings
+}
+```
+
+---
+
 ## 🗄️ Database Schema
 
-### SQLite Tables
+### Enhanced SQLite Tables with AI Caching
 
-#### emotional_checkins
+#### check_ins
 ```sql
-CREATE TABLE emotional_checkins (
+CREATE TABLE check_ins (
   id TEXT PRIMARY KEY,
   date TEXT NOT NULL,
   energy_level INTEGER NOT NULL CHECK (energy_level >= 1 AND energy_level <= 10),
   positivity_level INTEGER NOT NULL CHECK (positivity_level >= 1 AND positivity_level <= 10),
   emotions TEXT NOT NULL,        -- JSON array of emotion keys
-  notes TEXT DEFAULT '',
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
+  description TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_check_ins_date ON check_ins(date);
+CREATE INDEX idx_check_ins_created_at ON check_ins(created_at);
+```
+
+#### morning_checkins
+```sql
+CREATE TABLE morning_checkins (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  energy_level INTEGER NOT NULL CHECK (energy_level >= 1 AND energy_level <= 5),
+  positivity_level INTEGER NOT NULL CHECK (positivity_level >= 1 AND positivity_level <= 5),
+  emotions TEXT NOT NULL,        -- JSON array of emotion keys
+  reflection_prompt TEXT NOT NULL,
+  reflection_response TEXT NOT NULL,
+  notes TEXT,
+  completed_at TEXT NOT NULL,
   
   UNIQUE(date)                   -- One check-in per day
 );
 
-CREATE INDEX idx_emotional_checkins_date ON emotional_checkins(date);
-CREATE INDEX idx_emotional_checkins_created_at ON emotional_checkins(created_at);
+CREATE INDEX idx_morning_checkins_date ON morning_checkins(date);
+CREATE INDEX idx_morning_checkins_completed_at ON morning_checkins(completed_at);
 ```
 
 #### reflections
@@ -187,18 +388,13 @@ CREATE TABLE reflections (
   id TEXT PRIMARY KEY,
   date TEXT NOT NULL,
   type TEXT NOT NULL DEFAULT 'daily_prompt',
-  prompt TEXT NOT NULL,
-  response TEXT NOT NULL,
+  content TEXT NOT NULL,
   tags TEXT NOT NULL,            -- JSON array of tags
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  
-  UNIQUE(date, type)             -- One reflection per type per day
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_reflections_date ON reflections(date);
 CREATE INDEX idx_reflections_type ON reflections(type);
-CREATE INDEX idx_reflections_created_at ON reflections(created_at);
 ```
 
 #### time_entries
@@ -210,36 +406,57 @@ CREATE TABLE time_entries (
   category TEXT NOT NULL,
   start_time TEXT NOT NULL,
   end_time TEXT NOT NULL,
-  duration INTEGER NOT NULL,     -- Duration in minutes
-  tags TEXT NOT NULL,            -- JSON array of tags
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  tags TEXT,                     -- JSON array of tags
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_time_entries_date ON time_entries(date);
 CREATE INDEX idx_time_entries_category ON time_entries(category);
-CREATE INDEX idx_time_entries_created_at ON time_entries(created_at);
 ```
 
-#### insights (Future)
+#### calendar_time_entries
+```sql
+CREATE TABLE calendar_time_entries (
+  id TEXT PRIMARY KEY,
+  date TEXT NOT NULL,
+  activity TEXT NOT NULL,
+  category TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  duration INTEGER NOT NULL,
+  mood_rating INTEGER,           -- 1-6 scale
+  emotional_tags TEXT,           -- JSON array of emotional tags
+  reflection TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_calendar_entries_date ON calendar_time_entries(date);
+CREATE INDEX idx_calendar_entries_category ON calendar_time_entries(category);
+CREATE INDEX idx_calendar_entries_start_time ON calendar_time_entries(start_time);
+```
+
+#### insights (AI Caching System)
 ```sql
 CREATE TABLE insights (
   id TEXT PRIMARY KEY,
+  content TEXT NOT NULL,
   type TEXT NOT NULL,
-  title TEXT NOT NULL,
-  description TEXT NOT NULL,
-  data_source TEXT NOT NULL,     -- JSON array of source IDs
-  confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
-  date_range_start TEXT NOT NULL,
-  date_range_end TEXT NOT NULL,
-  metadata TEXT NOT NULL,        -- JSON object
-  created_at TEXT NOT NULL,
-  is_read BOOLEAN DEFAULT FALSE
+  icon TEXT NOT NULL,
+  time_period TEXT NOT NULL,
+  period_start TEXT NOT NULL,
+  period_end TEXT NOT NULL,
+  data_hash TEXT NOT NULL,
+  data_version INTEGER DEFAULT 1,
+  generated_at TEXT NOT NULL,
+  metadata TEXT,                 -- JSON metadata
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_insights_type ON insights(type);
-CREATE INDEX idx_insights_created_at ON insights(created_at);
-CREATE INDEX idx_insights_is_read ON insights(is_read);
+-- Performance indexes for caching
+CREATE INDEX idx_insights_period ON insights(time_period, period_start, period_end);
+CREATE INDEX idx_insights_hash ON insights(data_hash, time_period);
+CREATE INDEX idx_insights_generated_at ON insights(generated_at);
 ```
 
 ### Database Operations

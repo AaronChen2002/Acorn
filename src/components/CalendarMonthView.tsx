@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,12 @@ import {
 import { CalendarTimeEntry, getMonthDates, formatMonthYear } from '../types/calendar';
 import { useTheme } from '../utils/theme';
 
-const { width: screenWidth } = Dimensions.get('window');
-
 interface CalendarMonthViewProps {
   selectedDate: Date;
   timeEntries: CalendarTimeEntry[];
   onDatePress: (date: Date) => void;
 }
 
-const CELL_WIDTH = screenWidth / 7;
 const CELL_HEIGHT = 80;
 
 export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
@@ -27,9 +24,11 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   onDatePress,
 }) => {
   const { theme } = useTheme();
+  const [containerWidth, setContainerWidth] = useState(Dimensions.get('window').width);
   const monthDates = getMonthDates(selectedDate);
   const currentMonth = selectedDate.getMonth();
   const today = new Date();
+  const CELL_WIDTH = containerWidth / 7;
 
   // Get time entries for a specific date
   const getTimeEntriesForDate = (date: Date): CalendarTimeEntry[] => {
@@ -111,7 +110,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                   key={i}
                   style={[
                     styles.activityDot,
-                    { backgroundColor: dominantCategory ? getCategoryColor(dominantCategory) : THEME.colors.primary },
+                    { backgroundColor: dominantCategory ? getCategoryColor(dominantCategory) : theme.colors.primary },
                   ]}
                 />
               ))
@@ -122,7 +121,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                   style={[
                     styles.activityBarFill,
                     { 
-                      backgroundColor: dominantCategory ? getCategoryColor(dominantCategory) : THEME.colors.primary,
+                      backgroundColor: dominantCategory ? getCategoryColor(dominantCategory) : theme.colors.primary,
                       width: `${Math.min(100, (activityDensity / 8) * 100)}%`,
                     },
                   ]}
@@ -306,7 +305,14 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   });
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+      style={styles.container} 
+      showsVerticalScrollIndicator={false}
+      onLayout={(event) => {
+        const { width } = event.nativeEvent.layout;
+        setContainerWidth(width);
+      }}
+    >
       {renderWeekHeader()}
       <View style={styles.monthGrid}>
         {renderWeeks()}

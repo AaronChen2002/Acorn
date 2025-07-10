@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useAppStore } from './src/stores/appStore';
 import { TimeTrackingScreen } from './src/screens/TimeTrackingScreen';
+import InsightsScreen from './src/screens/InsightsScreen';
 import { TopNavigation } from './src/components/TopNavigation';
 import { SideMenu } from './src/components/SideMenu';
 import { MorningCheckInModal } from './src/components/MorningCheckInModal';
@@ -35,6 +36,7 @@ export default function App() {
   const [initError, setInitError] = useState<string | null>(null);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [showCheckInReview, setShowCheckInReview] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<string>('timetracking');
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(-screenWidth));
 
@@ -46,6 +48,43 @@ export default function App() {
     morningCheckIn,
     completeMorningCheckIn,
   } = useAppStore();
+  
+  // Subscribe to reactive modal visibility
+  const shouldShowModal = useAppStore((state) => {
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const hour = now.getHours();
+    
+    // Don't show if already completed today
+    if (state.morningCheckIn.isCompleted && state.morningCheckIn.data?.date === today) {
+      console.log('Modal hidden: Already completed today');
+      return false;
+    }
+    
+    // Don't show if it's before 5 AM
+    if (hour < 5) {
+      console.log('Modal hidden: Before 5 AM');
+      return false;
+    }
+    
+    // Don't show if manually hidden and not a new day
+    if (!state.morningCheckIn.shouldShowModal && state.morningCheckIn.data?.date === today) {
+      console.log('Modal hidden: Manually hidden for today');
+      return false;
+    }
+    
+    // Show if it's a new day and after 5 AM
+    const lastDate = state.morningCheckIn.data?.date || null;
+    const shouldShow = lastDate !== today;
+    console.log('Modal visibility decision:', {
+      shouldShow,
+      today,
+      lastDate,
+      isCompleted: state.morningCheckIn.isCompleted,
+      hour
+    });
+    return shouldShow;
+  });
 
   useEffect(() => {
     initializeApp();
@@ -89,8 +128,10 @@ export default function App() {
 
   const handleMorningCheckInComplete = async (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => {
     try {
+      console.log('Completing morning check-in...', data);
       await completeMorningCheckIn(data);
-      // Close the modal - shouldShowMorningModal will automatically return false
+      console.log('Morning check-in completed successfully');
+      // Close the modal - shouldShowModal will automatically return false
     } catch (error) {
       console.error('Error completing morning check-in:', error);
     }
@@ -116,8 +157,13 @@ export default function App() {
   const handleNavigate = (screen: string) => {
     if (screen === 'morning') {
       handleShowCheckInReview();
+    } else if (screen === 'insights') {
+      setCurrentScreen('insights');
+      setShowCheckInReview(false);
+    } else if (screen === 'timetracking') {
+      setCurrentScreen('timetracking');
+      setShowCheckInReview(false);
     }
-    // Add other navigation logic here if needed
     setIsSideMenuOpen(false);
   };
 
@@ -274,7 +320,7 @@ export default function App() {
       
              <SafeAreaView style={styles.safeArea}>
         <TopNavigation 
-          currentScreen="timetracking"
+          currentScreen={currentScreen}
           onScreenChange={handleMenuToggle}
         />
         
@@ -285,6 +331,8 @@ export default function App() {
               onClose={handleCloseCheckInReview}
               checkInData={morningCheckIn.data}
             />
+          ) : currentScreen === 'insights' ? (
+            <InsightsScreen />
           ) : (
             <TimeTrackingScreen />
           )}
@@ -324,7 +372,7 @@ export default function App() {
 
       {/* Morning Check-in Modal */}
       <MorningCheckInModal
-        isVisible={shouldShowMorningModal()}
+        isVisible={shouldShowModal}
         onComplete={handleMorningCheckInComplete}
         onCancel={handleMorningCheckInCancel}
         currentPrompt={getCurrentPrompt()}

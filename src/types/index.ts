@@ -32,12 +32,17 @@ export interface TimeEntry {
 
 export interface Insight {
   id: string;
-  type: 'theme' | 'pattern' | 'correlation';
   content: string;
-  metadata: Record<string, any>;
-  date_range_start: Date;
-  date_range_end: Date;
-  created_at: Date;
+  type: 'trend' | 'pattern' | 'correlation' | 'habit' | 'energy' | 'productivity';
+  icon: string;
+  timePeriod: 'week' | 'month' | 'quarter' | 'year';
+  periodStart: Date;
+  periodEnd: Date;
+  dataHash: string;
+  dataVersion: number;
+  generatedAt: Date;
+  metadata?: Record<string, any>;
+  createdAt: Date;
 }
 
 // Morning Check-in Types (New)
@@ -62,8 +67,10 @@ export interface MorningCheckInState {
   completedAt: Date | null; // When was it completed?
   data: MorningCheckInData | null; // The actual check-in data
   shouldShowModal: boolean; // Should we show the modal?
-  currentPromptIndex: number; // Current prompt in the cycle
+  currentPromptIndex: number; // Current prompt in the cycle (fallback)
   lastPromptDate: string | null; // Last date we cycled the prompt (YYYY-MM-DD)
+  aiGeneratedPrompt: string | null; // Today's AI-generated prompt
+  aiPromptDate: string | null; // Date the AI prompt was generated (YYYY-MM-DD)
 }
 
 // UI Types

@@ -35,6 +35,9 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
   currentPrompt,
 }) => {
   const { theme } = useTheme();
+  const testMode = useAppStore((state) => state.testMode);
+  const setTestMode = useAppStore((state) => state.setTestMode);
+  const morningCheckIn = useAppStore((state) => state.morningCheckIn);
   const [currentStep, setCurrentStep] = useState(0);
   const [energyLevel, setEnergyLevel] = useState(3);
   const [positivityLevel, setPositivityLevel] = useState(3);
@@ -49,7 +52,9 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
 
   const totalSteps = 9;
 
-  const completeMorningCheckIn = useAppStore((state) => state.completeMorningCheckIn);
+  const toggleTestMode = () => {
+    setTestMode(!testMode);
+  };
 
   const toggleEmotion = (emotionKey: string) => {
     setSelectedEmotions((prev) =>
@@ -131,10 +136,7 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
         notes: notes.trim() || undefined,
       };
 
-      // Update store
-      completeMorningCheckIn(checkInData);
-
-      // Call parent completion handler
+      // Call parent completion handler (which updates the store)
       onComplete(checkInData);
 
       // Reset form for next time
@@ -275,11 +277,21 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
           </View>
         );
       case 7:
+        const today = new Date().toISOString().split('T')[0];
+        const isAIGenerated = morningCheckIn.aiGeneratedPrompt && morningCheckIn.aiPromptDate === today;
+        
         return (
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Morning Reflection</Text>
             <View style={styles.promptContainer}>
-              <Text style={styles.promptText}>"{currentPrompt}"</Text>
+              <View style={styles.promptHeader}>
+                <Text style={styles.promptText}>"{currentPrompt}"</Text>
+                <View style={[styles.promptSource, { backgroundColor: isAIGenerated ? '#10b981' : '#6b7280' }]}>
+                  <Text style={styles.promptSourceText}>
+                    {isAIGenerated ? '🤖 AI' : '📝 Standard'}
+                  </Text>
+                </View>
+              </View>
             </View>
             <View style={styles.stepContent}>
               <TextInput
@@ -433,6 +445,29 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 2,
     },
+    testModeToggle: {
+      position: 'absolute',
+      top: theme.spacing.md,
+      right: theme.spacing.md,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      borderRadius: 20,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    testModeIcon: {
+      fontSize: 16,
+      marginRight: 4,
+    },
+    testModeText: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: 'rgba(255, 255, 255, 0.95)',
+      letterSpacing: 0.5,
+    },
     section: {
       paddingHorizontal: theme.spacing.xl,
       paddingVertical: theme.spacing.lg,
@@ -489,12 +524,28 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
       borderWidth: 1,
       borderColor: 'rgba(100, 116, 139, 0.3)',
     },
+    promptHeader: {
+      flexDirection: 'column',
+      gap: theme.spacing.sm,
+    },
     promptText: {
       fontSize: 16,
       color: theme.colors.text,
       lineHeight: 24,
       fontStyle: 'italic',
       fontWeight: '500',
+    },
+    promptSource: {
+      alignSelf: 'flex-start',
+      borderRadius: 12,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: 4,
+    },
+    promptSourceText: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: 'white',
+      letterSpacing: 0.5,
     },
     reflectionInput: {
       backgroundColor: 'rgba(30, 41, 59, 0.8)',
@@ -695,6 +746,22 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
                 <Text style={styles.greeting}>Good morning! 🌅</Text>
                 <Text style={styles.subtitle}>Take a moment to check in with yourself</Text>
               </View>
+              
+              {/* Test Mode Toggle */}
+              <TouchableOpacity
+                style={[
+                  styles.testModeToggle,
+                  { backgroundColor: testMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)' },
+                  { borderColor: testMode ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)' }
+                ]}
+                onPress={toggleTestMode}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.testModeIcon}>🧪</Text>
+                <Text style={styles.testModeText}>
+                  {testMode ? 'TEST' : 'LIVE'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Progress Indicator */}

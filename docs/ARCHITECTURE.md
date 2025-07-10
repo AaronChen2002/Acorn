@@ -17,39 +17,48 @@ This document provides a detailed overview of the Acorn app architecture, design
 ### Application Structure
 
 ```
-Acorn follows a layered architecture:
+Acorn follows a layered architecture with AI integration and caching:
 
 ┌─────────────────────────────────────────────────────────────┐
 │                     Presentation Layer                      │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │   CheckIn       │  │  DailyPrompt    │  │  TimeTracking   │ │
-│  │    Screen       │  │     Screen      │  │     Screen      │ │
+│  │   CheckIn       │  │  TimeTracking   │  │   Insights      │ │
+│  │    Screen       │  │     Screen      │  │    Screen       │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 │                                                               │
 │                     Component Layer                           │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │  Reusable UI Components (MoodSlider, TagInput, etc.)   │   │
+│  │  Calendar Components, Morning Check-in, Navigation     │   │
+│  │  (MoodSlider, TagInput, CalendarGrid, SideMenu, etc.)  │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                               │
 │                     Business Logic Layer                     │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │           Zustand Store (appStore.ts)                  │   │
+│  │     Zustand Store (appStore.ts) + Calendar Store       │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                               │
+│                     AI & Caching Layer                      │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │   AI Service + Insight Cache + Data Hash Validation    │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                               │
 │                     Data Layer                               │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │           SQLite Database (database.ts)                │   │
+│  │      SQLite Database with Optimized Schemas            │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Architectural Decisions
 
-1. **Single Page Application**: Uses tab navigation instead of stack navigation for simplicity
+1. **Hamburger Menu Navigation**: Uses side menu instead of tabs for clean, minimal interface
 2. **State-First Design**: UI components are primarily controlled by Zustand store
 3. **Cross-Platform First**: All components designed for web and mobile compatibility
 4. **Type-Safe**: Comprehensive TypeScript usage throughout the application
 5. **Modular Components**: Reusable, self-contained components with clear interfaces
+6. **AI Integration**: OpenAI API with intelligent caching and pattern analysis
+7. **Performance Optimization**: Database indexing, data hashing, and smart caching
+8. **Privacy-First**: Local data storage with test mode for development
 
 ## 🔄 State Management
 
@@ -59,17 +68,38 @@ Acorn follows a layered architecture:
 // appStore.ts structure
 interface AppState {
   // Data state
-  emotionalCheckIns: EmotionalCheckIn[];
+  checkIns: EmotionalCheckIn[];
   reflections: Reflection[];
   timeEntries: TimeEntry[];
+  insights: Insight[];
+  
+  // Morning Check-in State
+  morningCheckIn: MorningCheckInState;
   
   // UI state
+  selectedDate: Date;
   currentScreen: string;
+  isLoading: boolean;
+  error: string | null;
+  
+  // Settings
+  theme: 'light' | 'dark';
+  testMode: boolean;
   
   // Actions
-  addEmotionalCheckIn: (checkIn: EmotionalCheckIn) => void;
-  addReflection: (reflection: Reflection) => void;
-  addTimeEntry: (entry: TimeEntry) => void;
+  addCheckIn: (checkIn: Omit<EmotionalCheckIn, 'id' | 'created_at'>) => void;
+  addReflection: (reflection: Omit<Reflection, 'id' | 'created_at'>) => void;
+  addTimeEntry: (entry: Omit<TimeEntry, 'id' | 'created_at'>) => void;
+  
+  // Morning Check-in Actions
+  completeMorningCheckIn: (data: MorningCheckInData) => void;
+  shouldShowMorningModal: () => boolean;
+  generateTodaysPrompt: () => Promise<string>;
+  
+  // Insight caching actions
+  getCachedInsights: (timePeriod: 'week' | 'month' | 'quarter') => Promise<Insight[]>;
+  generateInsightsForPeriod: (timePeriod, start, end) => Promise<Insight[]>;
+  invalidateInsightCache: (timePeriod?: string) => Promise<void>;
   
   // Database operations
   loadData: () => Promise<void>;
@@ -95,28 +125,52 @@ interface AppState {
 ### Database Architecture
 
 ```typescript
-// Database Tables
+// Enhanced Database Tables with AI Caching
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│  emotional_checkins │    │    reflections      │    │    time_entries     │
+│  check_ins          │    │    reflections      │    │    time_entries     │
 ├─────────────────────┤    ├─────────────────────┤    ├─────────────────────┤
 │ id (PRIMARY KEY)    │    │ id (PRIMARY KEY)    │    │ id (PRIMARY KEY)    │
 │ date                │    │ date                │    │ date                │
-│ energyLevel         │    │ type                │    │ activity            │
-│ positivityLevel     │    │ prompt              │    │ category            │
-│ emotions            │    │ response            │    │ startTime           │
-│ notes               │    │ tags                │    │ endTime             │
-│ createdAt           │    │ createdAt           │    │ tags                │
-│ updatedAt           │    │ updatedAt           │    │ createdAt           │
-└─────────────────────┘    └─────────────────────┘    │ updatedAt           │
+│ energy_level        │    │ type                │    │ activity            │
+│ positivity_level    │    │ content             │    │ category            │
+│ emotions            │    │ tags                │    │ start_time          │
+│ description         │    │ created_at          │    │ end_time            │
+│ created_at          │    └─────────────────────┘    │ tags                │
+└─────────────────────┘                              │ created_at          │
                                                        └─────────────────────┘
+
+┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
+│  morning_checkins   │    │ calendar_time_entries│    │      insights      │
+├─────────────────────┤    ├─────────────────────┤    ├─────────────────────┤
+│ id (PRIMARY KEY)    │    │ id (PRIMARY KEY)    │    │ id (PRIMARY KEY)    │
+│ date (UNIQUE)       │    │ date                │    │ content             │
+│ energy_level        │    │ activity            │    │ type                │
+│ positivity_level    │    │ category            │    │ icon                │
+│ emotions            │    │ start_time          │    │ time_period         │
+│ reflection_prompt   │    │ end_time            │    │ period_start        │
+│ reflection_response │    │ duration            │    │ period_end          │
+│ notes               │    │ mood_rating         │    │ data_hash           │
+│ completed_at        │    │ emotional_tags      │    │ data_version        │
+└─────────────────────┘    │ reflection          │    │ generated_at        │
+                           │ created_at          │    │ metadata            │
+                           │ updated_at          │    │ created_at          │
+                           └─────────────────────┘    └─────────────────────┘
+
+// Database Indexes for Performance
+CREATE INDEX idx_insights_period ON insights(time_period, period_start, period_end);
+CREATE INDEX idx_insights_hash ON insights(data_hash, time_period);
+CREATE INDEX idx_morning_checkins_date ON morning_checkins(date);
+CREATE INDEX idx_calendar_entries_date ON calendar_time_entries(date);
 ```
 
 ### Data Models
 
 1. **EmotionalCheckIn**: Daily mood and emotion tracking
-2. **Reflection**: Journaling responses to daily prompts
-3. **TimeEntry**: Activity tracking with emotional context
-4. **Insight**: AI-generated patterns and recommendations (future)
+2. **MorningCheckInData**: Comprehensive morning ritual data with AI prompts
+3. **Reflection**: Journaling responses to daily prompts
+4. **TimeEntry**: Activity tracking with emotional context
+5. **CalendarTimeEntry**: Enhanced time tracking with mood ratings and emotional tags
+6. **Insight**: AI-generated patterns and recommendations with caching metadata
 
 ### Data Flow
 
@@ -124,6 +178,11 @@ interface AppState {
 User Input → Component → Store Action → Database Service → SQLite
                                     ↓
 UI Update ← Component ← Store State ← Database Response
+
+// AI-Enhanced Data Flow
+User Data → Data Hash → Cache Check → AI Service → Pattern Analysis → 
+          ↓                        ↓             ↓
+Database Cache ← Insight Storage ← OpenAI API ← Smart Caching
 ```
 
 ## 🧩 Component Structure
@@ -340,4 +399,199 @@ const createEmotionalCheckIn = (data: Partial<EmotionalCheckIn>): EmotionalCheck
 ### Feature Expansion
 - **Plugin Architecture**: Easy to add new features
 - **API Design**: Consistent interfaces for new integrations
-- **Data Model**: Flexible data structures for evolution 
+- **Data Model**: Flexible data structures for evolution
+
+## 🤖 AI Integration Architecture
+
+### AI Service Layer
+
+```typescript
+// AI Service with caching capabilities
+class AIService {
+  // Activity categorization
+  async categorizeActivity(activity: string, testMode: boolean): Promise<ActivityCategory>;
+  
+  // Personalized prompt generation
+  async generatePersonalizedPrompt(checkIns: MorningCheckIn[], goals: string[], testMode: boolean): Promise<string>;
+  
+  // Insight generation with caching
+  async generateCachedInsights(checkIns: MorningCheckIn[], activities: CalendarTimeEntry[], goals: string[], testMode: boolean): Promise<CachedInsight[]>;
+}
+```
+
+### AI Data Pipeline
+
+```
+Raw User Data → Data Aggregation → Pattern Analysis → AI Processing → Insight Generation → Cache Storage
+     ↓                ↓                 ↓              ↓               ↓              ↓
+Morning Check-ins → Weekly Summary → OpenAI API → Structured Output → Database Cache → UI Display
+Activity Data    → Trend Analysis  → Prompt Eng. → JSON Response   → Hash Validation → Loading States
+Goal Tracking    → Correlation     → Test Mode   → Error Handling  → Performance   → User Experience
+```
+
+### AI Processing Patterns
+
+1. **Data Aggregation**: Collect and structure user data for analysis
+2. **Pattern Recognition**: Identify trends, correlations, and behavioral patterns
+3. **Insight Generation**: Create actionable, personalized recommendations
+4. **Caching Strategy**: Store results to minimize API calls and improve performance
+
+## 📊 Insight Caching Architecture
+
+### Caching Strategy
+
+```typescript
+// Cache validation with data hashing
+interface CachedInsight {
+  id: string;
+  content: string;
+  type: 'trend' | 'pattern' | 'correlation' | 'habit' | 'energy' | 'productivity';
+  icon: string;
+  timePeriod: 'week' | 'month' | 'quarter';
+  periodStart: Date;
+  periodEnd: Date;
+  dataHash: string;
+  dataVersion: number;
+  generatedAt: Date;
+  metadata?: Record<string, any>;
+  createdAt: Date;
+}
+```
+
+### Cache Invalidation Logic
+
+```typescript
+// Smart cache invalidation
+const areCachedInsightsValid = (
+  cachedDataHash: string,
+  currentDataHash: string,
+  cacheGeneratedAt: Date,
+  maxCacheAgeHours: number = 24
+): boolean => {
+  // Check if data has changed
+  if (cachedDataHash !== currentDataHash) return false;
+  
+  // Check if cache is too old
+  const cacheAgeHours = (Date.now() - cacheGeneratedAt.getTime()) / (1000 * 60 * 60);
+  return cacheAgeHours <= maxCacheAgeHours;
+};
+```
+
+### Cache Performance Optimization
+
+1. **Database Indexing**: Optimized queries with proper indexes
+2. **Data Hashing**: Efficient change detection using hash functions
+3. **Time-based Periods**: Structured weekly/monthly/quarterly analysis
+4. **Cleanup Management**: Automatic removal of outdated cache entries
+
+### Cache Flow Architecture
+
+```
+User Request → Cache Check → Hash Validation → Cache Hit/Miss Decision
+     ↓              ↓            ↓                    ↓
+UI Loading → Database Query → Data Comparison → Return Cached / Generate New
+     ↓              ↓            ↓                    ↓
+Loading State → Index Lookup → Hash Match → Instant Response / AI Processing
+```
+
+## 🎯 Test Mode Architecture
+
+### Development vs Production Data
+
+```typescript
+// Test mode implementation
+interface TestModeConfig {
+  enabled: boolean;
+  sampleCheckIns: MorningCheckInData[];
+  sampleActivities: CalendarTimeEntry[];
+  sampleGoals: string[];
+}
+
+// AI Service with test mode
+if (testMode) {
+  // Use sample data for AI processing
+  const insights = await generateInsights(sampleData);
+} else {
+  // Use real user data
+  const insights = await generateInsights(realUserData);
+}
+```
+
+### Privacy Protection
+
+1. **Data Isolation**: Test mode completely isolates sample data from real data
+2. **AI Processing**: OpenAI API receives only sample data during development
+3. **User Control**: Users can toggle test mode for privacy preferences
+4. **Development Safety**: Prevents accidental processing of real user data
+
+## 🔄 Performance Optimization Architecture
+
+### Database Performance
+
+```sql
+-- Optimized indexes for insight queries
+CREATE INDEX idx_insights_period ON insights(time_period, period_start, period_end);
+CREATE INDEX idx_insights_hash ON insights(data_hash, time_period);
+CREATE INDEX idx_morning_checkins_date ON morning_checkins(date);
+CREATE INDEX idx_calendar_entries_date ON calendar_time_entries(date);
+```
+
+### Query Optimization
+
+1. **Indexed Lookups**: All cache queries use database indexes
+2. **Batch Operations**: Multiple database operations combined
+3. **Selective Loading**: Only load data needed for current time period
+4. **Connection Pooling**: Efficient database connection management
+
+### UI Performance
+
+```typescript
+// Optimized component rendering
+const InsightsScreen = React.memo(() => {
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Efficient data loading with caching
+  useEffect(() => {
+    const loadCachedInsights = async () => {
+      const cachedInsights = await getCachedInsights('week');
+      setInsights(cachedInsights);
+      setLoading(false);
+    };
+    
+    loadCachedInsights();
+  }, []);
+  
+  // Prevent unnecessary re-renders
+  return useMemo(() => (
+    <InsightsList insights={insights} loading={loading} />
+  ), [insights, loading]);
+});
+```
+
+## 🚀 Deployment Architecture
+
+### Cross-Platform Deployment
+
+```typescript
+// Platform-specific service initialization
+const initializePlatformServices = async () => {
+  if (Platform.OS === 'web') {
+    // Web-specific initialization
+    await webDatabaseService.initialize();
+  } else {
+    // Mobile-specific initialization
+    await databaseService.initialize();
+  }
+  
+  // Common AI service initialization
+  await aiService.initialize();
+};
+```
+
+### Build Optimization
+
+1. **Code Splitting**: Lazy loading of non-essential components
+2. **Bundle Analysis**: Regular monitoring of bundle size
+3. **Tree Shaking**: Elimination of unused code
+4. **Platform Builds**: Optimized builds for web and mobile 

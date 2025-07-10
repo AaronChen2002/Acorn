@@ -7,7 +7,18 @@ import {
   MorningCheckInData,
   MorningCheckInState,
 } from '../types';
+import { CalendarTimeEntry } from '../types/calendar';
 import { DAILY_PROMPTS } from '../constants';
+import { aiService } from '../services/aiService';
+import { databaseService } from '../services/database';
+import {
+  generateDataHash,
+  getTimePeriodBounds,
+  areCachedInsightsValid,
+  hasEnoughDataForInsights,
+  filterDataForPeriod,
+  createInsightCacheKey,
+} from '../utils/insightCache';
 
 interface AppState {
   // Data
@@ -29,6 +40,7 @@ interface AppState {
   theme: 'light' | 'dark';
   reminderEnabled: boolean;
   reminderTime: string;
+  testMode: boolean; // When true, AI doesn't use real user data for learning
 
   // Actions
   setSelectedDate: (date: Date) => void;
@@ -51,11 +63,18 @@ interface AppState {
 
   addInsight: (insight: Omit<Insight, 'id' | 'created_at'>) => void;
 
+  // Insight caching actions
+  getCachedInsights: (timePeriod: 'week' | 'month' | 'quarter', forceRefresh?: boolean) => Promise<Insight[]>;
+  generateInsightsForPeriod: (timePeriod: 'week' | 'month' | 'quarter', periodStart: Date, periodEnd: Date) => Promise<Insight[]>;
+  invalidateInsightCache: (timePeriod?: 'week' | 'month' | 'quarter') => Promise<void>;
+  clearOldInsights: (olderThanDays: number) => Promise<void>;
+
   // Morning Check-in Actions (Enhanced for Phase 3)
   completeMorningCheckIn: (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => void;
   shouldShowMorningModal: () => boolean;
   resetMorningCheckIn: () => void;
   getCurrentPrompt: () => string;
+  generateTodaysPrompt: () => Promise<string>;
   cycleToNextPrompt: () => void;
   setModalVisibility: (visible: boolean) => void;
   checkForNewDay: () => void;
@@ -66,11 +85,13 @@ interface AppState {
   getReflectionsByDate: (date: Date) => Reflection[];
   getTimeEntriesByDate: (date: Date) => TimeEntry[];
   getRecentInsights: (days: number) => Insight[];
+  getRecentMorningCheckIns: (days: number) => Promise<MorningCheckInData[]>;
 
   // Settings actions
   setTheme: (theme: 'light' | 'dark') => void;
   setReminderEnabled: (enabled: boolean) => void;
   setReminderTime: (time: string) => void;
+  setTestMode: (enabled: boolean) => void;
 }
 
 // Centralized ID generation utility
@@ -141,6 +162,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     shouldShowModal: false,
     currentPromptIndex: 0,
     lastPromptDate: null,
+    aiGeneratedPrompt: null,
+    aiPromptDate: null,
   },
 
   selectedDate: new Date(),
@@ -151,6 +174,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   theme: 'dark',
   reminderEnabled: true,
   reminderTime: '18:00',
+  testMode: true, // Default to test mode until ready for production
 
   // UI Actions
   setSelectedDate: (date) => set({ selectedDate: date }),
@@ -286,7 +310,76 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   getCurrentPrompt: () => {
     const { morningCheckIn } = get();
-    return DAILY_PROMPTS[morningCheckIn.currentPromptIndex] || DAILY_PROMPTS[0];
+    const today = formatDate(new Date());
+    
+    // Use AI-generated prompt if available and from today
+    if (morningCheckIn.aiGeneratedPrompt && morningCheckIn.aiPromptDate === today) {
+      console.log('Using AI-generated prompt for today');
+      return morningCheckIn.aiGeneratedPrompt;
+    }
+    
+    // Fallback to static prompt
+    console.log('Using fallback static prompt');
+    const fallbackPrompt = DAILY_PROMPTS[morningCheckIn.currentPromptIndex] || DAILY_PROMPTS[0];
+    return fallbackPrompt;
+  },
+
+  generateTodaysPrompt: async () => {
+    const { morningCheckIn, testMode } = get();
+    const today = formatDate(new Date());
+    
+    // Return cached prompt if already generated today
+    if (morningCheckIn.aiGeneratedPrompt && morningCheckIn.aiPromptDate === today) {
+      return morningCheckIn.aiGeneratedPrompt;
+    }
+    
+    try {
+      // Get recent check-in data (last 7 days)
+      const recentCheckIns = await get().getRecentMorningCheckIns(7);
+      
+      // Extract recent goals
+      const recentGoals = recentCheckIns
+        .map(checkIn => checkIn.mainGoal)
+        .filter(goal => goal && goal.trim().length > 0)
+        .slice(0, 5); // Last 5 goals
+      
+      // Generate AI prompt
+      const result = await aiService.generatePersonalizedPrompt(
+        recentCheckIns,
+        recentGoals,
+        testMode
+      );
+      
+      // Cache the generated prompt
+      set((state) => ({
+        morningCheckIn: {
+          ...state.morningCheckIn,
+          aiGeneratedPrompt: result.prompt,
+          aiPromptDate: today,
+        },
+      }));
+      
+      console.log('Generated personalized prompt:', result.prompt);
+      console.log('Context:', result.context);
+      
+      return result.prompt;
+    } catch (error) {
+      console.error('Failed to generate personalized prompt:', error);
+      
+      // Fallback to static prompt
+      const fallbackPrompt = DAILY_PROMPTS[morningCheckIn.currentPromptIndex] || DAILY_PROMPTS[0];
+      
+      // Cache the fallback prompt
+      set((state) => ({
+        morningCheckIn: {
+          ...state.morningCheckIn,
+          aiGeneratedPrompt: fallbackPrompt,
+          aiPromptDate: today,
+        },
+      }));
+      
+      return fallbackPrompt;
+    }
   },
 
   cycleToNextPrompt: () => {
@@ -331,10 +424,13 @@ export const useAppStore = create<AppState>((set, get) => ({
           isCompleted: false,
           completedAt: null,
           shouldShowModal: shouldShowModalLogic(state.morningCheckIn, now),
+          // Clear AI prompt so new personalized prompt gets generated
+          aiGeneratedPrompt: null,
+          aiPromptDate: null,
         },
       }));
       
-      // Cycle to next prompt for the new day
+      // Cycle to next prompt for the new day (fallback mechanism)
       get().cycleToNextPrompt();
     }
   },
@@ -352,6 +448,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       const shouldShow = shouldShowModalLogic(get().morningCheckIn, now);
       
       if (shouldShow) {
+        // Generate today's personalized prompt before showing modal
+        console.log('Generating personalized prompt for today...');
+        await get().generateTodaysPrompt();
+        
         set((state) => ({
           morningCheckIn: {
             ...state.morningCheckIn,
@@ -393,8 +493,212 @@ export const useAppStore = create<AppState>((set, get) => ({
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
   },
 
+  getRecentMorningCheckIns: async (days) => {
+    try {
+      // Get from database service
+      const allCheckIns = await databaseService.getMorningCheckIns();
+      
+      // Filter to recent days
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      
+      const recentCheckIns = allCheckIns.filter(checkIn => {
+        const checkInDate = new Date(checkIn.date);
+        return checkInDate >= cutoffDate;
+      });
+      
+      return recentCheckIns;
+    } catch (error) {
+      console.error('Error getting recent morning check-ins:', error);
+      return [];
+    }
+  },
+
+  // Insight caching implementations
+  getCachedInsights: async (timePeriod, forceRefresh = false) => {
+    try {
+      const periodBounds = getTimePeriodBounds(new Date(), timePeriod);
+      
+      if (!forceRefresh) {
+        // Check for cached insights
+        const cachedInsights = await databaseService.getInsightsForPeriod(
+          timePeriod,
+          periodBounds.start,
+          periodBounds.end
+        );
+        
+        if (cachedInsights.length > 0) {
+          // Check if cache is still valid
+          const mostRecentInsight = cachedInsights[0];
+          
+          // Get current data to check if it has changed
+          const [checkIns, activities] = await Promise.all([
+            get().getRecentMorningCheckIns(30), // Get 30 days of data
+            databaseService.getCalendarTimeEntries(),
+          ]);
+          
+          // Extract recent goals from check-ins
+          const recentGoals = checkIns.map(c => c.mainGoal).filter(g => g);
+          
+          // Generate current data hash
+          const currentDataHash = generateDataHash(checkIns, activities, recentGoals);
+          
+          // Check if cached data is still valid
+          if (areCachedInsightsValid(
+            mostRecentInsight.dataHash,
+            currentDataHash,
+            mostRecentInsight.generatedAt,
+            24 // Cache for 24 hours
+          )) {
+            console.log(`Using cached insights for ${timePeriod}`);
+            return cachedInsights;
+          }
+        }
+      }
+      
+      // Generate new insights if cache is invalid or forced refresh
+      console.log(`Generating new insights for ${timePeriod}`);
+      return await get().generateInsightsForPeriod(
+        timePeriod,
+        periodBounds.start,
+        periodBounds.end
+      );
+    } catch (error) {
+      console.error('Error getting cached insights:', error);
+      return [];
+    }
+  },
+
+  generateInsightsForPeriod: async (timePeriod, periodStart, periodEnd) => {
+    try {
+      const { testMode } = get();
+      
+      // Get all data for the period
+      const [allCheckIns, allActivities] = await Promise.all([
+        databaseService.getMorningCheckIns(),
+        databaseService.getCalendarTimeEntries(),
+      ]);
+      
+      // Filter data for the specific period
+      const { checkIns, activities } = filterDataForPeriod(
+        allCheckIns,
+        allActivities,
+        periodStart,
+        periodEnd
+      );
+      
+      // Check if we have enough data
+      if (!hasEnoughDataForInsights(checkIns, activities)) {
+        console.log(`Not enough data for ${timePeriod} insights`);
+        return [];
+      }
+      
+      // Extract goals from check-ins
+      const goals = checkIns.map(c => c.mainGoal).filter(g => g);
+      
+      // Generate data hash
+      const dataHash = generateDataHash(checkIns, activities, goals);
+      
+      // Generate insights using AI
+      const aiInsights = await aiService.generateCachedInsights(
+        checkIns,
+        activities,
+        goals,
+        testMode
+      );
+      
+      // Convert AI insights to our Insight format and save to database
+      const insights: Insight[] = [];
+      for (const aiInsight of aiInsights) {
+        const insight: Insight = {
+          id: generateId(),
+          content: aiInsight.content,
+          type: aiInsight.type as 'trend' | 'pattern' | 'correlation' | 'habit' | 'energy' | 'productivity',
+          icon: aiInsight.icon,
+          timePeriod,
+          periodStart,
+          periodEnd,
+          dataHash,
+          dataVersion: 1,
+          generatedAt: new Date(),
+          createdAt: new Date(),
+        };
+        
+        // Save to database
+        await databaseService.saveInsight(insight);
+        insights.push(insight);
+      }
+      
+      // Update app state
+      set(state => ({
+        insights: [...state.insights, ...insights],
+      }));
+      
+      console.log(`Generated ${insights.length} insights for ${timePeriod}`);
+      return insights;
+    } catch (error) {
+      console.error('Error generating insights:', error);
+      return [];
+    }
+  },
+
+  invalidateInsightCache: async (timePeriod) => {
+    try {
+      if (timePeriod) {
+        // Invalidate specific time period
+        const periodBounds = getTimePeriodBounds(new Date(), timePeriod);
+        const cachedInsights = await databaseService.getInsightsForPeriod(
+          timePeriod,
+          periodBounds.start,
+          periodBounds.end
+        );
+        
+        // Delete cached insights for this period
+        for (const insight of cachedInsights) {
+          await databaseService.deleteEntry('insights', insight.id);
+        }
+      } else {
+        // Invalidate all cached insights
+        const allInsights = await databaseService.getInsights();
+        for (const insight of allInsights) {
+          await databaseService.deleteEntry('insights', insight.id);
+        }
+      }
+      
+      // Clear from app state
+      set(state => ({
+        insights: timePeriod 
+          ? state.insights.filter(i => i.timePeriod !== timePeriod)
+          : [],
+      }));
+      
+      console.log(`Invalidated ${timePeriod || 'all'} insight cache`);
+    } catch (error) {
+      console.error('Error invalidating insight cache:', error);
+    }
+  },
+
+  clearOldInsights: async (olderThanDays) => {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+      
+      await databaseService.deleteOldInsights(cutoffDate);
+      
+      // Update app state
+      set(state => ({
+        insights: state.insights.filter(i => i.generatedAt >= cutoffDate),
+      }));
+      
+      console.log(`Cleared insights older than ${olderThanDays} days`);
+    } catch (error) {
+      console.error('Error clearing old insights:', error);
+    }
+  },
+
   // Settings actions
   setTheme: (theme) => set({ theme }),
   setReminderEnabled: (reminderEnabled) => set({ reminderEnabled }),
   setReminderTime: (reminderTime) => set({ reminderTime }),
+  setTestMode: (testMode) => set({ testMode }),
 }));

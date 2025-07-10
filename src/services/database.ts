@@ -49,11 +49,16 @@ interface TimeEntryRow {
 
 interface InsightRow {
   id: string;
-  type: string;
   content: string;
-  metadata: string;
-  date_range_start: string;
-  date_range_end: string;
+  type: string;
+  icon: string;
+  time_period: string;
+  period_start: string;
+  period_end: string;
+  data_hash: string;
+  data_version: number;
+  generated_at: string;
+  metadata: string | null;
   created_at: string;
 }
 
@@ -136,17 +141,34 @@ class DatabaseService {
       )
     `);
 
-    // Insights table
+    // Enhanced insights table for caching
     this.db.execSync(`
       CREATE TABLE IF NOT EXISTS insights (
         id TEXT PRIMARY KEY,
-        type TEXT NOT NULL,
         content TEXT NOT NULL,
+        type TEXT NOT NULL,
+        icon TEXT NOT NULL,
+        time_period TEXT NOT NULL,
+        period_start TEXT NOT NULL,
+        period_end TEXT NOT NULL,
+        data_hash TEXT NOT NULL,
+        data_version INTEGER DEFAULT 1,
+        generated_at TEXT NOT NULL,
         metadata TEXT,
-        date_range_start TEXT,
-        date_range_end TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    // Index for efficient period-based queries
+    this.db.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_insights_period 
+      ON insights(time_period, period_start, period_end)
+    `);
+
+    // Index for data version tracking
+    this.db.execSync(`
+      CREATE INDEX IF NOT EXISTS idx_insights_hash 
+      ON insights(data_hash, time_period)
     `);
 
     // Calendar time entries table (Phase 6)
@@ -349,23 +371,27 @@ class DatabaseService {
     }));
   }
 
-  // Insight operations
+  // Enhanced insight operations for caching
   async saveInsight(insight: Insight): Promise<void> {
     const statement = this.db.prepareSync(
       `INSERT OR REPLACE INTO insights 
-       (id, type, content, metadata, date_range_start, date_range_end, created_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+       (id, content, type, icon, time_period, period_start, period_end, data_hash, data_version, generated_at, metadata) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
 
     try {
       statement.executeSync([
         insight.id,
-        insight.type,
         insight.content,
-        JSON.stringify(insight.metadata),
-        insight.date_range_start.toISOString(),
-        insight.date_range_end.toISOString(),
-        insight.created_at.toISOString(),
+        insight.type,
+        insight.icon,
+        insight.timePeriod,
+        insight.periodStart.toISOString(),
+        insight.periodEnd.toISOString(),
+        insight.dataHash,
+        insight.dataVersion,
+        insight.generatedAt.toISOString(),
+        insight.metadata ? JSON.stringify(insight.metadata) : null,
       ]);
     } finally {
       statement.finalizeSync();
@@ -374,18 +400,77 @@ class DatabaseService {
 
   async getInsights(): Promise<Insight[]> {
     const result = this.db.getAllSync(
-      'SELECT * FROM insights ORDER BY created_at DESC'
+      'SELECT * FROM insights ORDER BY generated_at DESC'
     ) as InsightRow[];
 
     return result.map((row) => ({
       id: row.id,
-      type: row.type as 'theme' | 'pattern' | 'correlation',
       content: row.content,
-      metadata: JSON.parse(row.metadata || '{}'),
-      date_range_start: new Date(row.date_range_start),
-      date_range_end: new Date(row.date_range_end),
-      created_at: new Date(row.created_at),
+      type: row.type as 'trend' | 'pattern' | 'correlation' | 'habit' | 'energy' | 'productivity',
+      icon: row.icon,
+      timePeriod: row.time_period as 'week' | 'month' | 'quarter' | 'year',
+      periodStart: new Date(row.period_start),
+      periodEnd: new Date(row.period_end),
+      dataHash: row.data_hash,
+      dataVersion: row.data_version,
+      generatedAt: new Date(row.generated_at),
+      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      createdAt: new Date(row.created_at),
     }));
+  }
+
+  // New methods for insight caching
+  async getInsightsForPeriod(timePeriod: 'week' | 'month' | 'quarter', periodStart: Date, periodEnd: Date): Promise<Insight[]> {
+    const result = this.db.getAllSync(
+      'SELECT * FROM insights WHERE time_period = ? AND period_start = ? AND period_end = ? ORDER BY generated_at DESC',
+      [timePeriod, periodStart.toISOString(), periodEnd.toISOString()]
+    ) as InsightRow[];
+
+    return result.map((row) => ({
+      id: row.id,
+      content: row.content,
+      type: row.type as 'trend' | 'pattern' | 'correlation' | 'habit' | 'energy' | 'productivity',
+      icon: row.icon,
+      timePeriod: row.time_period as 'week' | 'month' | 'quarter' | 'year',
+      periodStart: new Date(row.period_start),
+      periodEnd: new Date(row.period_end),
+      dataHash: row.data_hash,
+      dataVersion: row.data_version,
+      generatedAt: new Date(row.generated_at),
+      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      createdAt: new Date(row.created_at),
+    }));
+  }
+
+  async getInsightsByDataHash(dataHash: string, timePeriod: 'week' | 'month' | 'quarter'): Promise<Insight[]> {
+    const result = this.db.getAllSync(
+      'SELECT * FROM insights WHERE data_hash = ? AND time_period = ? ORDER BY generated_at DESC',
+      [dataHash, timePeriod]
+    ) as InsightRow[];
+
+    return result.map((row) => ({
+      id: row.id,
+      content: row.content,
+      type: row.type as 'trend' | 'pattern' | 'correlation' | 'habit' | 'energy' | 'productivity',
+      icon: row.icon,
+      timePeriod: row.time_period as 'week' | 'month' | 'quarter' | 'year',
+      periodStart: new Date(row.period_start),
+      periodEnd: new Date(row.period_end),
+      dataHash: row.data_hash,
+      dataVersion: row.data_version,
+      generatedAt: new Date(row.generated_at),
+      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      createdAt: new Date(row.created_at),
+    }));
+  }
+
+  async deleteOldInsights(olderThan: Date): Promise<void> {
+    const statement = this.db.prepareSync('DELETE FROM insights WHERE generated_at < ?');
+    try {
+      statement.executeSync([olderThan.toISOString()]);
+    } finally {
+      statement.finalizeSync();
+    }
   }
 
   // Utility operations
