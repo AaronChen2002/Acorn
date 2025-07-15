@@ -70,6 +70,38 @@ export class AIService {
   }
 
   /**
+   * Generate a simple response for any prompt
+   */
+  public async generateResponse(prompt: string): Promise<string> {
+    if (!this.isAvailable()) {
+      throw new Error('AI service is not available');
+    }
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant. Be concise and accurate.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 100
+      });
+
+      return response.choices[0]?.message?.content || '';
+    } catch (error) {
+      console.error('AI generation failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Categorize an activity using AI
    */
   public async categorizeActivity(

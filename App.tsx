@@ -18,6 +18,8 @@ import { MorningCheckInModal } from './src/components/MorningCheckInModal';
 import { CheckInReviewPanel } from './src/components/CheckInReviewPanel';
 import { MorningCheckInData } from './src/types';
 import { useTheme } from './src/utils/theme';
+import { backgroundSyncService } from './src/services/backgroundSyncService';
+import { googleAuthService, isGoogleCalendarAvailable } from './src/services/googleAuthService';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -36,6 +38,7 @@ export default function App() {
   const [initError, setInitError] = useState<string | null>(null);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [showCheckInReview, setShowCheckInReview] = useState(false);
+  const [showMorningModalManually, setShowMorningModalManually] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<string>('timetracking');
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(-screenWidth));
@@ -51,25 +54,40 @@ export default function App() {
   
   // Subscribe to reactive modal visibility
   const shouldShowModal = useAppStore((state) => {
-    const today = new Date().toISOString().split('T')[0];
+    // If manually triggered from menu, show it
+    if (showMorningModalManually) {
+      console.log('Modal shown: Manually triggered from menu');
+      return true;
+    }
+    
     const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
     const hour = now.getHours();
     
-    // Don't show if already completed today
+    // Don't show for first-time users (unless manually triggered)
+    if (state.isFirstTimeUser) {
+      console.log('Modal hidden: First-time user');
+      return false;
+    }
+    
+    // Don't show if already completed today (unless manually triggered)
     if (state.morningCheckIn.isCompleted && state.morningCheckIn.data?.date === today) {
       console.log('Modal hidden: Already completed today');
       return false;
     }
     
-    // Don't show if it's before 5 AM
+    // Don't show if it's before 5 AM (unless manually triggered)
     if (hour < 5) {
       console.log('Modal hidden: Before 5 AM');
       return false;
     }
     
-    // Don't show if manually hidden and not a new day
-    if (!state.morningCheckIn.shouldShowModal && state.morningCheckIn.data?.date === today) {
-      console.log('Modal hidden: Manually hidden for today');
+    // IMPORTANT: Don't show if manually hidden (e.g., "Maybe Later" was clicked)
+    if (!state.morningCheckIn.shouldShowModal) {
+      console.log('Modal hidden: Manually hidden (Maybe Later clicked)');
       return false;
     }
     
@@ -81,7 +99,9 @@ export default function App() {
       today,
       lastDate,
       isCompleted: state.morningCheckIn.isCompleted,
-      hour
+      isFirstTimeUser: state.isFirstTimeUser,
+      hour,
+      manuallyTriggered: showMorningModalManually
     });
     return shouldShow;
   });
@@ -115,6 +135,9 @@ export default function App() {
       setInitError(null);
       await initializeMorningCheckIn();
       
+      // Initialize Google Calendar integration
+      await initializeGoogleCalendarIntegration();
+      
       // Add a small delay to show the beautiful loading screen
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -126,12 +149,118 @@ export default function App() {
     }
   };
 
+  /**
+   * Initialize Google Calendar integration on app startup
+   */
+  const initializeGoogleCalendarIntegration = async () => {
+    try {
+      console.log('🚀 Checking Google Calendar integration availability...');
+      
+      // Check if Google Calendar integration is available
+      if (!isGoogleCalendarAvailable()) {
+        console.log('⚠️ Google Calendar integration not available - missing environment variables');
+        console.log('💡 The app will work without Google Calendar integration');
+        return;
+      }
+      
+      console.log('✅ Google Calendar integration is available');
+      
+      // First, check if we're coming back from OAuth redirect
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        const error = urlParams.get('error');
+        
+        // Handle OAuth errors first
+        if (error) {
+          console.error('❌ OAuth error in URL:', error);
+          // Clean up URL and continue normal initialization
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+          return; // Don't process further OAuth logic
+        }
+        
+        // Only process OAuth callback if we have both code and state
+        if (code && state) {
+          console.log('🔄 Detected OAuth callback, validating...');
+          
+          // Check if we have a valid stored code verifier (indicates intentional OAuth flow)
+          const hasValidOAuthState = localStorage.getItem('oauth_code_verifier');
+          
+          if (!hasValidOAuthState) {
+            console.warn('⚠️ OAuth callback detected but no valid state found - likely stale callback');
+            console.log('🧹 Cleaning up stale OAuth callback and continuing normal initialization');
+            
+            // Clean up stale callback
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            return; // Continue with normal initialization
+          }
+          
+          // We have a valid OAuth callback, process it
+          console.log('✅ Valid OAuth callback detected, processing...');
+          
+          const result = await googleAuthService.authenticate();
+          
+          if (result.success) {
+            console.log('✅ OAuth callback processed successfully:', result.user?.email);
+            
+            // Start background sync immediately
+            backgroundSyncService.start();
+            
+            // Perform initial sync with shorter delay
+            setTimeout(() => {
+              console.log('🔄 Performing initial sync after OAuth...');
+              backgroundSyncService.syncNow();
+            }, 1000);
+            
+            // Force a state update to refresh the UI
+            setTimeout(() => {
+              console.log('🔄 Forcing UI refresh after OAuth...');
+              setIsInitialized(false);
+              setTimeout(() => setIsInitialized(true), 100);
+            }, 500);
+            
+            return; // Exit early as we've handled the OAuth callback
+          } else {
+            console.error('❌ OAuth callback failed:', result.error);
+            // Clean up failed callback
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+        }
+      }
+      
+      // Check if user is already authenticated (from stored tokens)
+      const isAuthenticated = googleAuthService.isAuthenticated();
+      
+      if (isAuthenticated) {
+        const user = googleAuthService.getCurrentUser();
+        console.log('✅ User already authenticated:', user?.email);
+        
+        // Start background sync if user is authenticated
+        backgroundSyncService.start();
+        
+        // Perform initial sync to catch up with any changes
+        setTimeout(() => {
+          console.log('🔄 Performing initial sync...');
+          backgroundSyncService.syncNow();
+        }, 2000); // Slightly shorter delay
+      } else {
+        console.log('⚠️ User not authenticated, sync will start after authentication');
+      }
+    } catch (error) {
+      console.error('❌ Failed to initialize Google Calendar integration:', error);
+    }
+  };
+
   const handleMorningCheckInComplete = async (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => {
     try {
       console.log('Completing morning check-in...', data);
       await completeMorningCheckIn(data);
       console.log('Morning check-in completed successfully');
-      // Close the modal - shouldShowModal will automatically return false
+      setShowMorningModalManually(false); // Reset manual flag
     } catch (error) {
       console.error('Error completing morning check-in:', error);
     }
@@ -139,6 +268,7 @@ export default function App() {
 
   const handleMorningCheckInCancel = () => {
     resetMorningCheckIn();
+    setShowMorningModalManually(false); // Reset manual flag
   };
 
   const handleMenuToggle = () => {
@@ -156,7 +286,10 @@ export default function App() {
 
   const handleNavigate = (screen: string) => {
     if (screen === 'morning') {
-      handleShowCheckInReview();
+      // Show the morning check-in modal directly
+      resetMorningCheckIn();
+      setShowMorningModalManually(true);
+      setCurrentScreen('timetracking'); // Keep current screen as timetracking
     } else if (screen === 'insights') {
       setCurrentScreen('insights');
       setShowCheckInReview(false);

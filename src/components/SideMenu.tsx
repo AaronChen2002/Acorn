@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import {
 } from 'react-native';
 import { useTheme } from '../utils/theme';
 import { useAppStore } from '../stores/appStore';
+import { DEV_CONFIG, ACTIVITY_CATEGORIES } from '../constants';
+import { GoogleCalendarIntegration } from './GoogleCalendarIntegration';
+import { GoogleCalendarDiagnostics } from './GoogleCalendarDiagnostics';
 
 interface SideMenuProps {
   isVisible: boolean;
@@ -30,10 +33,18 @@ export const SideMenu: React.FC<SideMenuProps> = ({
   const morningCheckIn = useAppStore((state) => state.morningCheckIn);
   const testMode = useAppStore((state) => state.testMode);
   const setTestMode = useAppStore((state) => state.setTestMode);
+  const [showCalendarTest, setShowCalendarTest] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   
   const handleNavigate = (screen: string) => {
-    onNavigate(screen);
-    onClose();
+    if (screen === 'morning') {
+      // For morning ritual, we'll handle it specially to show the modal
+      onNavigate('morning');
+      onClose();
+    } else {
+      onNavigate(screen);
+      onClose();
+    }
   };
 
   const toggleTestMode = () => {
@@ -51,7 +62,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
     {
       id: 'morning',
       title: 'Morning Ritual',
-      subtitle: morningCheckIn.isCompleted ? 'Completed today' : 'Pending',
+      subtitle: morningCheckIn.isCompleted ? 'Completed today' : 'Start your day',
       icon: '🌅',
       screen: 'morning',
     },
@@ -205,6 +216,54 @@ export const SideMenu: React.FC<SideMenuProps> = ({
       fontWeight: '500',
       color: theme.colors.text,
     },
+    legendRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: theme.spacing.sm,
+    },
+    legendColor: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      marginRight: theme.spacing.sm,
+    },
+    legendText: {
+      fontSize: 14,
+      color: theme.colors.text,
+      fontWeight: '500',
+    },
+    devSection: {
+      margin: theme.spacing.md,
+      marginTop: theme.spacing.lg,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.md,
+      borderWidth: 1,
+      borderColor: '#FF7043',
+    },
+    devSectionTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#FF7043',
+      marginBottom: theme.spacing.md,
+    },
+    devMenuItem: {
+      padding: theme.spacing.sm,
+      backgroundColor: 'rgba(255, 112, 67, 0.1)',
+      borderRadius: theme.borderRadius.sm,
+      marginBottom: theme.spacing.sm,
+    },
+    devMenuText: {
+      fontSize: 12,
+      color: '#FF7043',
+      fontWeight: '500',
+    },
+    calendarTestSection: {
+      margin: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.sm,
+    },
     footer: {
       padding: theme.spacing.lg,
       alignItems: 'center',
@@ -258,26 +317,78 @@ export const SideMenu: React.FC<SideMenuProps> = ({
 
               {/* Navigation Items */}
               <View style={styles.navigationSection}>
-                {menuItems.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.menuItem}
-                    onPress={() => handleNavigate(item.screen)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.menuItemContent}>
-                      <View style={styles.iconContainer}>
-                        <Text style={styles.icon}>{item.icon}</Text>
+                {menuItems.map((item) => {
+                  const isMorningRitual = item.id === 'morning';
+                  const isCompleted = isMorningRitual && morningCheckIn.isCompleted;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.menuItem,
+                        isMorningRitual && !isCompleted && {
+                          borderWidth: 2,
+                          borderColor: theme.colors.primary,
+                          backgroundColor: theme.colors.primary + '10',
+                        }
+                      ]}
+                      onPress={() => handleNavigate(item.screen)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.menuItemContent}>
+                        <View style={[
+                          styles.iconContainer,
+                          isMorningRitual && !isCompleted && {
+                            backgroundColor: theme.colors.primary,
+                          }
+                        ]}>
+                          <Text style={styles.icon}>{item.icon}</Text>
+                        </View>
+                        <View style={styles.textContainer}>
+                          <Text style={styles.menuItemTitle}>{item.title}</Text>
+                          <Text style={styles.menuItemSubtitle}>
+                            {item.subtitle}
+                          </Text>
+                        </View>
+                        {isMorningRitual && !isCompleted && (
+                          <View style={{
+                            backgroundColor: theme.colors.primary,
+                            borderRadius: 12,
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            marginLeft: 8,
+                          }}>
+                            <Text style={{
+                              color: 'white',
+                              fontSize: 12,
+                              fontWeight: 'bold',
+                            }}>
+                              NEW
+                            </Text>
+                          </View>
+                        )}
                       </View>
-                      <View style={styles.textContainer}>
-                        <Text style={styles.menuItemTitle}>{item.title}</Text>
-                        <Text style={styles.menuItemSubtitle}>
-                          {item.subtitle}
-                        </Text>
-                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Category Legend */}
+              <View style={styles.statusSection}>
+                <Text style={styles.statusTitle}>Calendar Categories</Text>
+                <View style={styles.statusCard}>
+                  {ACTIVITY_CATEGORIES.map((category) => (
+                    <View key={category.key} style={styles.legendRow}>
+                      <View 
+                        style={[
+                          styles.legendColor, 
+                          { backgroundColor: category.color }
+                        ]} 
+                      />
+                      <Text style={styles.legendText}>{category.label}</Text>
                     </View>
-                  </TouchableOpacity>
-                ))}
+                  ))}
+                </View>
               </View>
 
               {/* Morning Check-in Status */}
@@ -307,9 +418,11 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                 </View>
               )}
 
-              {/* Test Mode Toggle */}
+              {/* Developer Settings */}
               <View style={styles.statusSection}>
                 <Text style={styles.statusTitle}>Developer Settings</Text>
+                
+                {/* Test Mode Toggle */}
                 <TouchableOpacity
                   style={styles.statusCard}
                   onPress={toggleTestMode}
@@ -325,7 +438,57 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                     {testMode ? 'Using sample data for AI' : 'Using real user data'}
                   </Text>
                 </TouchableOpacity>
+
+                {/* Calendar Test Toggle */}
+                {DEV_CONFIG.MOCK_GOOGLE_CALENDAR && (
+                  <TouchableOpacity
+                    style={[styles.statusCard, { marginTop: 12 }]}
+                    onPress={() => setShowCalendarTest(!showCalendarTest)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.statusRow}>
+                      <Text style={styles.statusLabel}>📅 Calendar Test:</Text>
+                      <Text style={[styles.statusValue, { color: showCalendarTest ? '#10b981' : '#ef4444' }]}>
+                        {showCalendarTest ? 'OPEN' : 'CLOSED'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.statusLabel, { fontSize: 12, marginTop: 4 }]}>
+                      Test Google Calendar integration with mock data
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Diagnostics Toggle */}
+                <TouchableOpacity
+                  style={[styles.statusCard, { marginTop: 12 }]}
+                  onPress={() => setShowDiagnostics(!showDiagnostics)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.statusRow}>
+                    <Text style={styles.statusLabel}>🔧 Diagnostics:</Text>
+                    <Text style={[styles.statusValue, { color: showDiagnostics ? '#10b981' : '#ef4444' }]}>
+                      {showDiagnostics ? 'OPEN' : 'CLOSED'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.statusLabel, { fontSize: 12, marginTop: 4 }]}>
+                    Debug Google Calendar integration issues
+                  </Text>
+                </TouchableOpacity>
               </View>
+
+              {/* Calendar Test Component */}
+              {showCalendarTest && (
+                <View style={styles.calendarTestSection}>
+                  <GoogleCalendarIntegration />
+                </View>
+              )}
+
+              {/* Diagnostics Component */}
+              {showDiagnostics && (
+                <View style={styles.calendarTestSection}>
+                  <GoogleCalendarDiagnostics />
+                </View>
+              )}
 
               {/* Footer */}
               <View style={styles.footer}>

@@ -8,8 +8,9 @@ export interface TimeSlot {
 
 export interface CalendarTimeEntry {
   id: string;
-  date: string; // YYYY-MM-DD format
-  activity: string;
+  date?: string; // YYYY-MM-DD format (optional for backwards compatibility)
+  activity?: string; // For manual entries
+  title?: string; // For imported entries (Google Calendar)
   category: string;
   startTime: Date;
   endTime: Date;
@@ -17,8 +18,14 @@ export interface CalendarTimeEntry {
   
   // Emotional context (Phase 6)
   moodRating?: number; // 1-6 scale with emojis
-  emotionalTags: string[]; // ['focused', 'stressed', 'collaborative', etc.]
+  emotionalTags?: string[]; // ['focused', 'stressed', 'collaborative', etc.]
   reflection?: string; // Quick notes about the activity
+  
+  // Google Calendar integration fields
+  description?: string; // Event description
+  location?: string; // Event location
+  isFromCalendar?: boolean; // Whether this was imported from calendar
+  source?: string; // Source of the event (e.g., 'google-calendar')
   
   // Metadata
   createdAt: Date;
@@ -32,7 +39,7 @@ export interface CalendarSelection {
   selectedSlots: TimeSlot[];
 }
 
-export type ViewMode = 'day' | 'week' | 'month';
+export type ViewMode = 'day' | 'week';
 
 export interface CalendarState {
   // Current date being viewed
@@ -58,12 +65,20 @@ export interface CalendarState {
 }
 
 export interface ActivityCreationData {
-  activity: string;
+  activity?: string; // For manual entries
+  title?: string; // For imported entries
   category: string;
   moodRating?: number;
-  emotionalTags: string[];
+  emotionalTags?: string[];
   reflection?: string;
+  description?: string;
+  location?: string;
 }
+
+// Helper function to get display name for any entry type
+export const getEntryDisplayName = (entry: CalendarTimeEntry): string => {
+  return entry.title || entry.activity || 'Untitled Entry';
+};
 
 export interface CalendarGridProps {
   date: Date;
@@ -112,7 +127,11 @@ export const MOOD_RATINGS = [
 // Utility functions
 export const formatTimeSlot = (slot: TimeSlot): string => {
   const formatTime = (date: Date) => 
-    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    date.toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
   
   return `${formatTime(slot.start)} - ${formatTime(slot.end)}`;
 };
@@ -128,9 +147,13 @@ export const createTimeSlot = (startTime: Date, endTime: Date): TimeSlot => {
 export const generateTimeSlots = (date: Date, startHour: number = 6, endHour: number = 23, slotDuration: number = 15): TimeSlot[] => {
   const slots: TimeSlot[] = [];
   
+  // Create a new date object to avoid mutating the input
+  const baseDate = new Date(date);
+  baseDate.setHours(0, 0, 0, 0); // Reset to start of day
+  
   for (let hour = startHour; hour < endHour; hour++) {
     for (let minute = 0; minute < 60; minute += slotDuration) {
-      const start = new Date(date);
+      const start = new Date(baseDate);
       start.setHours(hour, minute, 0, 0);
       
       const end = new Date(start);
@@ -185,66 +208,19 @@ export const getWeekDates = (date: Date): Date[] => {
   return dates;
 };
 
-export const getMonthStart = (date: Date): Date => {
-  const start = new Date(date);
-  start.setDate(1);
-  start.setHours(0, 0, 0, 0);
-  return start;
-};
-
-export const getMonthEnd = (date: Date): Date => {
-  const end = new Date(date);
-  end.setMonth(end.getMonth() + 1);
-  end.setDate(0);
-  end.setHours(23, 59, 59, 999);
-  return end;
-};
-
-export const getMonthDates = (date: Date): Date[] => {
-  const start = getMonthStart(date);
-  const end = getMonthEnd(date);
-  const dates: Date[] = [];
-  
-  // Add dates from previous month to fill first week
-  const firstDay = start.getDay();
-  const prevMonth = new Date(start);
-  prevMonth.setMonth(prevMonth.getMonth() - 1);
-  const prevMonthEnd = getMonthEnd(prevMonth);
-  
-  for (let i = firstDay - 1; i >= 0; i--) {
-    const date = new Date(prevMonthEnd);
-    date.setDate(prevMonthEnd.getDate() - i);
-    dates.push(date);
-  }
-  
-  // Add all dates of current month
-  const currentMonth = start.getMonth();
-  let currentDate = new Date(start);
-  
-  while (currentDate.getMonth() === currentMonth) {
-    dates.push(new Date(currentDate));
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
-  // Add dates from next month to fill last week (up to 42 days total)
-  while (dates.length < 42) {
-    dates.push(new Date(currentDate));
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
-  return dates;
-};
-
 export const formatWeekRange = (date: Date): string => {
-  const start = getWeekStart(date);
-  const end = getWeekEnd(date);
+  const weekStart = getWeekStart(date);
+  const weekEnd = getWeekEnd(date);
   
-  const startStr = start.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  const endStr = end.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const startStr = weekStart.toLocaleDateString([], { 
+    month: 'short', 
+    day: 'numeric' 
+  });
+  const endStr = weekEnd.toLocaleDateString([], { 
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric'
+  });
   
   return `${startStr} - ${endStr}`;
-};
-
-export const formatMonthYear = (date: Date): string => {
-  return date.toLocaleDateString([], { month: 'long', year: 'numeric' });
 }; 

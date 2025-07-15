@@ -17,14 +17,15 @@ export const EMOTIONS = [
 // Activity categories for time tracking
 export const ACTIVITY_CATEGORIES = [
   { key: 'deep-work', label: 'Deep Work', color: '#6366f1' },
-  { key: 'meetings', label: 'Meetings', color: '#f59e0b' },
-  { key: 'break', label: 'Break', color: '#10b981' },
   { key: 'social', label: 'Social', color: '#ec4899' },
-  { key: 'errands', label: 'Errands', color: '#8b5cf6' },
+  { key: 'networking', label: 'Networking', color: '#8b5cf6' },
+  { key: 'interview', label: 'Interview', color: '#f59e0b' },
+  { key: 'travel', label: 'Travel', color: '#06b6d4' },
+  { key: 'reading-emails', label: 'Reading/Emails', color: '#10b981' },
+  { key: 'break', label: 'Break', color: '#84cc16' },
   { key: 'exercise', label: 'Exercise', color: '#ef4444' },
-  { key: 'learning', label: 'Learning', color: '#06b6d4' },
-  { key: 'creative', label: 'Creative', color: '#f97316' },
-  { key: 'personal', label: 'Personal', color: '#84cc16' },
+  { key: 'learning', label: 'Learning', color: '#f97316' },
+  { key: 'creative', label: 'Creative', color: '#06b6d4' },
   { key: 'other', label: 'Other', color: '#6b7280' },
 ];
 
@@ -151,3 +152,57 @@ export const APP_SETTINGS = {
   backupFrequency: 'weekly',
   dataRetentionDays: 365,
 };
+
+// Development and testing configuration
+export const DEV_CONFIG = {
+  // Skip OAuth during development
+  MOCK_GOOGLE_CALENDAR: __DEV__ && true,
+  
+  // Skip morning checklist during development  
+  SKIP_MORNING_CHECKIN: __DEV__ && false, // Set to true when testing other features
+  
+  // Auto-populate with test data
+  USE_SAMPLE_CALENDAR_DATA: __DEV__ && true,
+  
+  // Fast testing mode
+  ENABLE_DEV_SHORTCUTS: __DEV__ && true,
+};
+
+// Mock calendar events for testing
+export const MOCK_CALENDAR_EVENTS = [
+  {
+    id: 'mock-1',
+    summary: 'Team Standup',
+    start: { dateTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+    end: { dateTime: new Date(Date.now() - 1.5 * 60 * 60 * 1000).toISOString() },
+    description: 'Daily team sync meeting',
+  },
+  {
+    id: 'mock-2', 
+    summary: 'Gym Workout',
+    start: { dateTime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
+    end: { dateTime: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString() },
+    location: 'Fitness Center',
+  },
+  {
+    id: 'mock-3',
+    summary: 'Coffee with Sarah',
+    start: { dateTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+    end: { dateTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000).toISOString() },
+    location: 'Blue Bottle Coffee',
+  },
+  {
+    id: 'mock-4',
+    summary: 'Doctor Appointment', 
+    start: { dateTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+    end: { dateTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 45 * 60 * 1000).toISOString() },
+    description: 'Annual checkup',
+  },
+  {
+    id: 'mock-5',
+    summary: 'Grocery Shopping',
+    start: { dateTime: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString() },
+    end: { dateTime: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString() },
+    location: 'Whole Foods',
+  }
+];

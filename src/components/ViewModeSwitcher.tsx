@@ -23,7 +23,6 @@ export const ViewModeSwitcher: React.FC<ViewModeSwitcherProps> = ({
   const modes: { key: ViewMode; label: string; icon: string }[] = [
     { key: 'day', label: 'Day', icon: '📅' },
     { key: 'week', label: 'Week', icon: '📊' },
-    { key: 'month', label: 'Month', icon: '🗓️' },
   ];
 
   const styles = StyleSheet.create({

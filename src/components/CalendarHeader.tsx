@@ -36,8 +36,6 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
         });
       case 'week':
         return formatWeekRange(selectedDate);
-      case 'month':
-        return formatMonthYear(selectedDate);
       default:
         return '';
     }
@@ -49,8 +47,6 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
         return { prev: 'Previous Day', next: 'Next Day' };
       case 'week':
         return { prev: 'Previous Week', next: 'Next Week' };
-      case 'month':
-        return { prev: 'Previous Month', next: 'Next Month' };
       default:
         return { prev: 'Previous', next: 'Next' };
     }

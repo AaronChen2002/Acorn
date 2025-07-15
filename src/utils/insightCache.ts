@@ -150,8 +150,16 @@ export function filterDataForPeriod(
   checkIns: MorningCheckInData[];
   activities: CalendarTimeEntry[];
 } {
-  const startStr = periodStart.toISOString().split('T')[0];
-  const endStr = periodEnd.toISOString().split('T')[0];
+  // Use local date instead of ISO to avoid timezone issues
+  const startYear = periodStart.getFullYear();
+  const startMonth = String(periodStart.getMonth() + 1).padStart(2, '0');
+  const startDay = String(periodStart.getDate()).padStart(2, '0');
+  const startStr = `${startYear}-${startMonth}-${startDay}`;
+  
+  const endYear = periodEnd.getFullYear();
+  const endMonth = String(periodEnd.getMonth() + 1).padStart(2, '0');
+  const endDay = String(periodEnd.getDate()).padStart(2, '0');
+  const endStr = `${endYear}-${endMonth}-${endDay}`;
   
   const filteredCheckIns = checkIns.filter(c => c.date >= startStr && c.date <= endStr);
   const filteredActivities = activities.filter(a => a.date >= startStr && a.date <= endStr);
@@ -170,7 +178,16 @@ export function createInsightCacheKey(
   periodStart: Date,
   periodEnd: Date
 ): string {
-  const startStr = periodStart.toISOString().split('T')[0];
-  const endStr = periodEnd.toISOString().split('T')[0];
+  // Use local date instead of ISO to avoid timezone issues
+  const startYear = periodStart.getFullYear();
+  const startMonth = String(periodStart.getMonth() + 1).padStart(2, '0');
+  const startDay = String(periodStart.getDate()).padStart(2, '0');
+  const startStr = `${startYear}-${startMonth}-${startDay}`;
+  
+  const endYear = periodEnd.getFullYear();
+  const endMonth = String(periodEnd.getMonth() + 1).padStart(2, '0');
+  const endDay = String(periodEnd.getDate()).padStart(2, '0');
+  const endStr = `${endYear}-${endMonth}-${endDay}`;
+  
   return `${timePeriod}-${startStr}-${endStr}`;
 } 

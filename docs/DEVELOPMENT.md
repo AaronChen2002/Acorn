@@ -85,20 +85,29 @@ npm run dev
 ```
 
 #### Environment Configuration
-Create a `.env` file in the root directory:
+Create a `.env.local` file in the root directory:
 ```env
-# Development settings
-EXPO_PUBLIC_API_URL=http://localhost:3000
+# Required for AI features and morning check-in prompts
+EXPO_PUBLIC_OPENAI_API_KEY=your_openai_api_key_here
+
+# Optional: Google Calendar Integration
+EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Development settings (optional)
 EXPO_PUBLIC_DEBUG=true
-
-# Database settings
-DB_NAME=acorn_dev.db
-DB_VERSION=1
-
-# Feature flags
-ENABLE_AI_INSIGHTS=false
-ENABLE_CLOUD_SYNC=false
 ```
+
+**Important Notes:**
+- **OpenAI API Key**: Required for AI-powered features (morning prompts, insights, event categorization)
+- **Google Calendar**: Completely optional - app works perfectly without these credentials
+- **Environment File**: Use `.env.local` (not `.env`) to keep credentials secure
+- **Setup Guide**: See `GOOGLE_OAUTH_SETUP.md` for detailed Google Calendar setup instructions
+
+**Without Environment Variables:**
+- Morning check-in will use fallback prompts instead of AI-generated ones
+- Google Calendar integration panel will show helpful setup instructions
+- All core functionality (time tracking, manual activities, basic insights) works normally
 
 ---
 

@@ -17,11 +17,13 @@
 acorn/
 ├── src/
 │   ├── components/
-│   │   ├── calendar/                 # Calendar system (Phase 6-7)
-│   │   │   ├── CalendarTimeGrid.tsx
-│   │   │   ├── TimeSlotSelector.tsx
+│   │   ├── calendar/                 # Calendar system ✅
+│   │   │   ├── CalendarGrid.tsx
+│   │   │   ├── CalendarWeekView.tsx
+│   │   │   ├── CalendarMonthView.tsx
 │   │   │   ├── ActivityCreationModal.tsx
-│   │   │   └── ActivityCard.tsx
+│   │   │   ├── CategorySelector.tsx
+│   │   │   └── TimePicker.tsx
 │   │   ├── morning/                  # Morning check-in system ✅
 │   │   │   ├── MorningCheckInModal.tsx
 │   │   │   ├── MoodSlider.tsx
@@ -31,31 +33,39 @@ acorn/
 │   │   │   ├── TopNavigation.tsx
 │   │   │   ├── SideMenu.tsx
 │   │   │   └── HamburgerButton.tsx
-│   │   └── analytics/                # Data visualization (Phase 8)
+│   │   ├── google/                   # Google Calendar integration ✅
+│   │   │   ├── GoogleCalendarIntegration.tsx
+│   │   │   └── GoogleCalendarTest.tsx
+│   │   └── analytics/                # Data visualization (Phase 9)
 │   │       ├── TimeBreakdownChart.tsx
 │   │       ├── MoodTrendChart.tsx
 │   │       └── InsightCard.tsx
 │   ├── screens/
 │   │   ├── TimeTrackingScreen.tsx    # Primary interface ✅
-│   │   └── AnalyticsScreen.tsx       # Future analytics dashboard
+│   │   ├── CheckInScreen.tsx         # Morning check-in ✅
+│   │   ├── InsightsScreen.tsx        # AI insights dashboard ✅
+│   │   └── DailyPromptScreen.tsx     # Daily prompts ✅
 │   ├── services/
 │   │   ├── database.ts               # SQLite operations ✅
-│   │   ├── aiInsights.ts             # OpenAI integration (Phase 9)
-│   │   └── analytics.ts              # Data processing (Phase 8)
+│   │   ├── webDatabase.ts            # Web-compatible database ✅
+│   │   ├── aiService.ts              # OpenAI integration ✅
+│   │   ├── googleAuthService.ts      # Google OAuth 2.0 ✅
+│   │   ├── googleCalendarService.ts  # Google Calendar API ✅
+│   │   ├── backgroundSyncService.ts  # Background sync ✅
+│   │   └── eventCategorizationService.ts # AI event categorization ✅
 │   ├── stores/
 │   │   ├── appStore.ts               # Main Zustand store ✅
-│   │   ├── calendarStore.ts          # Calendar state (Phase 6)
-│   │   └── analyticsStore.ts         # Analytics state (Phase 8)
+│   │   └── calendarStore.ts          # Calendar state management ✅
 │   ├── types/
 │   │   ├── index.ts                  # Core types ✅
-│   │   ├── calendar.ts               # Calendar-specific types
-│   │   └── analytics.ts              # Analytics types
+│   │   └── calendar.ts               # Calendar-specific types ✅
 │   ├── constants/
 │   │   └── index.ts                  # Theme, emotions, prompts ✅
 │   └── utils/
 │       ├── morningDetection.ts       # Time-based logic ✅
-│       ├── calendarUtils.ts          # Calendar calculations
-│       └── aiUtils.ts                # AI processing helpers
+│       ├── database.ts               # Database utilities ✅
+│       ├── insightCache.ts           # AI insight caching ✅
+│       └── sampleDataGenerator.ts    # Sample data for testing ✅
 ├── assets/                           # Static assets
 ├── database/                         # SQLite files
 └── docs/                             # Comprehensive documentation
@@ -63,7 +73,7 @@ acorn/
 
 ## 📋 Development Phases
 
-### Phase 1-5: Foundation & Morning Check-in System ✅ COMPLETE
+### Phase 1-7: Foundation & Core Features ✅ COMPLETE
 
 #### Phase 1: Project Setup & Architecture ✅
 - ✅ React Native Expo project with TypeScript
@@ -97,107 +107,105 @@ acorn/
 - ✅ Error handling and edge case management
 - ✅ Performance optimization
 
-### Phase 6: Interactive Calendar Time Tracking (Next 2-3 weeks)
-**Goal**: Google Calendar-style visual time tracking
+#### Phase 6: Interactive Calendar Time Tracking ✅
+- ✅ Google Calendar-style 24-hour day view with 15-minute increments
+- ✅ Drag-to-select time slot functionality
+- ✅ Activity creation modal with rich emotional context
+- ✅ Category management and mood rating system
+- ✅ Multiple view modes (day, week, month)
+- ✅ Real-time calendar updates and conflict detection
 
-#### Step 6.1: Calendar Grid Foundation
-- [ ] Create 24-hour day view component with 15-minute increments
-- [ ] Implement grid layout with proper time labels
-- [ ] Add current time indicator
-- [ ] Responsive design for mobile and web
+#### Phase 7: Google Calendar Integration ✅
+- ✅ OAuth 2.0 authentication with PKCE security
+- ✅ Google Calendar API integration with event fetching
+- ✅ Background sync service (every 5 minutes)
+- ✅ AI-powered event categorization using OpenAI
+- ✅ First-time user experience improvements
+- ✅ Progressive onboarding and graceful degradation
+- ✅ Optional setup - app works without Google Calendar
 
-#### Step 6.2: Time Slot Selection
-- [ ] Drag-to-select functionality for time ranges
-- [ ] Visual feedback during selection
-- [ ] Touch-optimized interactions for mobile
-- [ ] Conflict detection for overlapping times
+### Phase 8: Advanced Calendar Features (Next 2-3 weeks)
+**Goal**: Professional-grade calendar functionality with drag-and-drop interactions
 
-#### Step 6.3: Activity Creation Modal
-- [ ] Rich activity creation interface
-- [ ] Category selection and management
-- [ ] "How did it go?" mood rating (1-6 scale with emojis)
-- [ ] Emotional tags (focused, stressed, collaborative, etc.)
-- [ ] Quick reflection text input
-
-#### Step 6.4: Data Integration
-- [ ] Time entry database schema updates
-- [ ] Calendar store implementation
-- [ ] Activity CRUD operations
-- [ ] Real-time calendar updates
-
-### Phase 7: Enhanced Calendar Features (Weeks 4-6)
-**Goal**: Professional-grade calendar functionality
-
-#### Step 7.1: Multiple View Modes
-- [ ] Day view (current implementation)
-- [ ] Week view with 7-day layout
-- [ ] Month view with activity density indicators
-- [ ] Smooth transitions between views
-
-#### Step 7.2: Drag and Drop
-- [ ] Resize existing activities
+#### Step 8.1: Advanced Interactions
+- [ ] Drag and drop to resize existing activities
 - [ ] Move activities to different time slots
-- [ ] Drag from one day to another
-- [ ] Conflict resolution during moves
+- [ ] Cross-day activity management
+- [ ] Intelligent conflict resolution during moves
 
-#### Step 7.3: Activity Management
-- [ ] Edit existing activities
-- [ ] Delete activities with confirmation
-- [ ] Search and filter activities
+#### Step 8.2: Activity Management
+- [ ] In-place editing of existing activities
+- [ ] Delete activities with confirmation dialogs
+- [ ] Search and filter activities by category/tags
 - [ ] Bulk operations for multiple activities
 
-#### Step 7.4: Templates & Efficiency
+#### Step 8.3: Efficiency Features
 - [ ] Activity templates for common tasks
-- [ ] Quick-add shortcuts
+- [ ] Quick-add shortcuts and keyboard navigation
 - [ ] Recurring activity support
-- [ ] Keyboard shortcuts for power users
+- [ ] Power user keyboard shortcuts
 
-### Phase 8: Data Visualization & Pattern Recognition (Weeks 7-9)
+#### Step 8.4: Enhanced Calendar Views
+- [ ] Current time indicator showing real-time progress
+- [ ] Improved week/month view navigation
+- [ ] Zoom controls for time granularity
+- [ ] Multi-select for bulk operations
+
+### Phase 9: Interactive Data Visualization (Weeks 4-6)
 **Goal**: Beautiful analytics and behavioral insights
 
-#### Step 8.1: Time Analytics
+#### Step 9.1: Chart Library Integration
+- [ ] Add Recharts or Victory Native for cross-platform charting
+- [ ] Create base chart components (LineChart, BarChart, PieChart)
+- [ ] Implement responsive chart layouts
+- [ ] Add smooth animations and transitions
+
+#### Step 9.2: Core Visualizations
 - [ ] Interactive pie charts for time allocation
-- [ ] Category breakdowns with drill-down
-- [ ] Weekly/monthly time comparison
-- [ ] Productivity metrics dashboard
+- [ ] Energy trends line chart showing levels over time
+- [ ] Mood correlation heatmaps (weekly/monthly)
+- [ ] Google Calendar integration visual status
+- [ ] Weekly overview dashboard with multiple metrics
 
-#### Step 8.2: Mood Correlation Analysis
-- [ ] Mood vs. activity type correlations
-- [ ] Energy level trends throughout the day
-- [ ] Emotional state patterns by day of week
-- [ ] Before/after activity mood comparisons
+#### Step 9.3: Interactive Features
+- [ ] Tap to explore data points with details
+- [ ] Time range picker (week/month/quarter views)
+- [ ] Drill-down navigation from overview to specific days
+- [ ] Comparison mode ("This week vs last week")
+- [ ] Export insights as shareable images
 
-#### Step 8.3: Visual Pattern Recognition
-- [ ] Activity heatmaps for time patterns
-- [ ] Productivity peak identification
-- [ ] Stress pattern visualization
-- [ ] Weekly habit tracking charts
+#### Step 9.4: Enhanced Insights Screen
+- [ ] Replace text insights with visual stories
+- [ ] "At a Glance" dashboard with key metrics
+- [ ] Insight cards with embedded mini-charts
+- [ ] Smooth scrolling between visualization sections
 
-#### Step 8.4: Insights Dashboard
-- [ ] Personalized insights cards
-- [ ] Trend analysis with explanations
-- [ ] Goal tracking and progress indicators
-- [ ] Exportable reports
+### Phase 10: Learning AI with Feedback Loops (Weeks 7-9)
+**Goal**: AI that learns from user behavior and improves recommendations
 
-### Phase 9: AI-Powered Contextual Insights (Weeks 10-12)
-**Goal**: Intelligent analysis of quantitative and qualitative data
+#### Step 10.1: Insight Feedback System
+- [ ] Star rating system for insight helpfulness
+- [ ] Action tracking ("Did you act on this insight?")
+- [ ] Outcome feedback system
+- [ ] Dismissal tracking for ignored insights
 
-#### Step 9.1: AI Data Processing Pipeline
-- [ ] OpenAI API integration setup
-- [ ] Data anonymization and privacy controls
-- [ ] Batch processing for efficiency
-- [ ] Local caching of insights
+#### Step 10.2: Behavioral Learning Engine
+- [ ] Feedback database for user ratings and actions
+- [ ] Learning algorithms that weight future insights
+- [ ] Personal insight scoring based on user preferences
+- [ ] Continuous recommendation quality improvement
 
-#### Step 9.2: Natural Language Processing
-- [ ] Reflection text analysis for emotional patterns
-- [ ] Activity description clustering
-- [ ] Keyword extraction and themes
-- [ ] Sentiment analysis over time
+#### Step 10.3: Advanced Pattern Recognition
+- [ ] Correlation engine for unexpected data connections
+- [ ] Seasonal analysis for monthly/yearly patterns
+- [ ] Anomaly detection for unusual weeks
+- [ ] Trigger identification for mood/energy changes
 
-#### Step 9.3: Behavioral Pattern Detection
-- [ ] Temporal productivity patterns
-- [ ] Activity-mood correlations
-- [ ] Stress trigger identification
+#### Step 10.4: Proactive Intelligence
+- [ ] Predictive insights based on user patterns
+- [ ] Optimal timing suggestions for activities
+- [ ] Risk detection for burnout or overwork
+- [ ] Personalized morning prompts that evolve
 - [ ] Optimal scheduling recommendations
 
 #### Step 9.4: Intelligent Recommendations

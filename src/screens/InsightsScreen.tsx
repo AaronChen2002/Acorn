@@ -3,6 +3,17 @@ import { View, Text, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator } f
 import { useAppStore } from '../stores/appStore';
 import { Insight } from '../types';
 import { getCurrentWeekPeriod } from '../utils/insightCache';
+import { 
+  EnergyTrendsChart, 
+  TimeRangePicker, 
+  ActivityBreakdownChart,
+  CHART_COLORS 
+} from '../components/analytics';
+import { 
+  generateSampleMorningCheckIns, 
+  generateSampleCalendarEntries,
+  generateSampleInsights 
+} from '../utils/sampleDataGenerator';
 
 interface InsightCardProps {
   title: string;
@@ -20,12 +31,22 @@ const InsightCard: React.FC<InsightCardProps> = ({ title, content, icon }) => (
   </View>
 );
 
+type TimeRange = 'week' | 'month' | 'quarter';
+
 const InsightsScreen: React.FC = () => {
-  const { getCachedInsights } = useAppStore();
+  const { getCachedInsights, testMode } = useAppStore();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasEnoughData, setHasEnoughData] = useState(true);
   const [weekPeriod, setWeekPeriod] = useState<{ start: Date; end: Date } | null>(null);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('week');
+  
+  // Sample data for development (when in test mode or no real data)
+  const [sampleCheckIns] = useState(() => generateSampleMorningCheckIns(14));
+  const [sampleCalendarEntries] = useState(() => generateSampleCalendarEntries(14));
+  const [sampleInsights] = useState(() => generateSampleInsights());
+
+
 
   useEffect(() => {
     const loadInsights = async () => {
@@ -36,6 +57,25 @@ const InsightsScreen: React.FC = () => {
         const currentWeek = getCurrentWeekPeriod();
         setWeekPeriod(currentWeek);
         
+        if (testMode || !hasEnoughData) {
+          // Use sample insights in test mode or when no data
+          const mockInsights = sampleInsights.map((insight, index) => ({
+            id: `sample-insight-${index}`,
+            content: insight.content,
+            type: insight.type,
+            icon: insight.icon,
+            timePeriod: 'week' as const,
+            periodStart: currentWeek.start,
+            periodEnd: currentWeek.end,
+            dataHash: 'sample-hash',
+            dataVersion: 1,
+            generatedAt: new Date(),
+            createdAt: new Date(),
+          }));
+          
+          setInsights(mockInsights);
+          setHasEnoughData(true);
+        } else {
         // Get cached insights (will generate new ones if needed)
         const weeklyInsights = await getCachedInsights('week');
         
@@ -45,6 +85,7 @@ const InsightsScreen: React.FC = () => {
         } else {
           setInsights(weeklyInsights);
           setHasEnoughData(true);
+          }
         }
       } catch (error) {
         console.error('Error loading insights:', error);
@@ -55,7 +96,7 @@ const InsightsScreen: React.FC = () => {
     };
 
     loadInsights();
-  }, [getCachedInsights]);
+  }, [getCachedInsights, testMode]);
 
   // Format date range for display
   const formatDateRange = (period: { start: Date; end: Date } | null) => {
@@ -78,19 +119,19 @@ const InsightsScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={CHART_COLORS.primary} />
           <Text style={styles.loadingText}>Analyzing your patterns...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (!hasEnoughData) {
+  if (!hasEnoughData && !testMode) {
     return (
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.title}>Weekly Insights</Text>
-          <Text style={styles.dateRange}>December 16-22, 2024</Text>
+          <Text style={styles.dateRange}>{formatDateRange(weekPeriod)}</Text>
           
           <View style={styles.noDataContainer}>
             <Text style={styles.noDataIcon}>📊</Text>
@@ -110,10 +151,40 @@ const InsightsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Weekly Insights</Text>
+        <Text style={styles.title}>Analytics Dashboard</Text>
         <Text style={styles.dateRange}>{formatDateRange(weekPeriod)}</Text>
         
-        {insights.length > 0 ? (
+        {/* Time Range Picker */}
+        <TimeRangePicker
+          selectedRange={selectedTimeRange}
+          onRangeSelect={setSelectedTimeRange}
+        />
+
+        {/* Energy Trends Chart */}
+        <EnergyTrendsChart
+          checkInsData={testMode ? sampleCheckIns : []}
+          height={300}
+        />
+
+        {/* Activity Breakdown Chart */}
+        <ActivityBreakdownChart
+          timeEntries={testMode ? sampleCalendarEntries : []}
+          height={360}
+        />
+
+        {/* Coming Soon Preview */}
+        <View style={styles.comingSoonContainer}>
+          <Text style={styles.comingSoonTitle}>🚧 Coming Soon</Text>
+          <Text style={styles.comingSoonText}>
+            • Mood correlation analysis{'\n'}
+            • Interactive drill-down features{'\n'}
+            • Export and sharing capabilities{'\n'}
+            • Daily/weekly pattern comparisons
+          </Text>
+        </View>
+        
+        {/* Text-based insights section */}
+        {insights.length > 0 && (
           <>
             <Text style={styles.insightsHeader}>
               {insights.length} insight{insights.length > 1 ? 's' : ''} discovered
@@ -127,12 +198,12 @@ const InsightsScreen: React.FC = () => {
               />
             ))}
           </>
-        ) : (
-          <View style={styles.noInsightsContainer}>
-            <Text style={styles.noInsightsIcon}>🔍</Text>
-            <Text style={styles.noInsightsTitle}>No New Insights</Text>
-            <Text style={styles.noInsightsText}>
-              Continue using the app and we'll surface patterns and insights as they emerge.
+        )}
+
+        {testMode && (
+          <View style={styles.testModeNotice}>
+            <Text style={styles.testModeText}>
+              🧪 Test Mode: Using sample data for development
             </Text>
           </View>
         )}
@@ -172,6 +243,13 @@ const styles = StyleSheet.create({
     color: '#888',
     marginBottom: 24,
   },
+  insightsHeader: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginTop: 24,
+    marginBottom: 16,
+  },
   insightCard: {
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
@@ -201,24 +279,25 @@ const styles = StyleSheet.create({
   },
   noDataContainer: {
     alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
   noDataIcon: {
-    fontSize: 48,
+    fontSize: 64,
     marginBottom: 16,
   },
   noDataTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '600',
     color: '#fff',
     marginBottom: 12,
+    textAlign: 'center',
   },
   noDataText: {
     fontSize: 16,
     color: '#ccc',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
     marginBottom: 8,
   },
   noDataSubtext: {
@@ -226,33 +305,60 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
   },
-  insightsHeader: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
   noInsightsContainer: {
     alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
   noInsightsIcon: {
-    fontSize: 48,
+    fontSize: 64,
     marginBottom: 16,
   },
   noInsightsTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '600',
     color: '#fff',
     marginBottom: 12,
+    textAlign: 'center',
   },
   noInsightsText: {
     fontSize: 16,
     color: '#ccc',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
+  },
+  comingSoonContainer: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#333',
+    borderStyle: 'dashed',
+  },
+  comingSoonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: CHART_COLORS.secondary,
+    marginBottom: 8,
+  },
+  comingSoonText: {
+    fontSize: 14,
+    color: '#ccc',
+    lineHeight: 20,
+  },
+  testModeNotice: {
+    backgroundColor: 'rgba(255, 180, 77, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: CHART_COLORS.secondary,
+  },
+  testModeText: {
+    fontSize: 14,
+    color: CHART_COLORS.secondary,
+    textAlign: 'center',
   },
 });
 

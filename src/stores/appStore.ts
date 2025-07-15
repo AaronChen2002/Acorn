@@ -35,6 +35,7 @@ interface AppState {
   currentScreen: string;
   isLoading: boolean;
   error: string | null;
+  isFirstTimeUser: boolean;
 
   // Settings
   theme: 'light' | 'dark';
@@ -79,6 +80,7 @@ interface AppState {
   setModalVisibility: (visible: boolean) => void;
   checkForNewDay: () => void;
   initializeMorningCheckIn: () => Promise<boolean>;
+  markUserAsExperienced: () => void;
 
   // Getters
   getCheckInByDate: (date: Date) => EmotionalCheckIn | undefined;
@@ -92,6 +94,7 @@ interface AppState {
   setReminderEnabled: (enabled: boolean) => void;
   setReminderTime: (time: string) => void;
   setTestMode: (enabled: boolean) => void;
+  markUserAsExperienced: () => void;
 }
 
 // Centralized ID generation utility
@@ -125,8 +128,14 @@ const isNewDay = (lastCheckInDate: string | null, currentDate: Date): boolean =>
 };
 
 // Helper to determine if we should show morning modal
-const shouldShowModalLogic = (state: MorningCheckInState, currentTime: Date = new Date()): boolean => {
+const shouldShowModalLogic = (state: MorningCheckInState, isFirstTimeUser: boolean, currentTime: Date = new Date()): boolean => {
   const today = formatDate(currentTime);
+  
+  // Don't show for first-time users
+  if (isFirstTimeUser) {
+    console.log('Modal hidden: First-time user');
+    return false;
+  }
   
   // Don't show if already completed today
   if (state.isCompleted && state.data?.date === today) {
@@ -165,6 +174,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     aiGeneratedPrompt: null,
     aiPromptDate: null,
   },
+  
+  // Track if this is a first-time user (check localStorage)
+  isFirstTimeUser: typeof window !== 'undefined' 
+    ? !localStorage.getItem('acorn_user_experienced') 
+    : true,
 
   selectedDate: new Date(),
   currentScreen: 'TimeTracking',
@@ -241,6 +255,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       id: generateId(),
       created_at: new Date(),
     };
+    
+    const state = get();
+    
+    // Mark user as experienced after they create their first time entry
+    if (state.isFirstTimeUser) {
+      console.log('🎯 User created their first time entry - marking as experienced');
+      get().markUserAsExperienced();
+    }
+    
     set((state) => ({
       timeEntries: [...state.timeEntries, entry],
     }));
@@ -292,8 +315,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   shouldShowMorningModal: () => {
-    const { morningCheckIn } = get();
-    return shouldShowModalLogic(morningCheckIn);
+    const { morningCheckIn, isFirstTimeUser } = get();
+    return shouldShowModalLogic(morningCheckIn, isFirstTimeUser);
   },
 
   resetMorningCheckIn: () => {
@@ -412,7 +435,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // New Phase 3 method: Check for new day and handle transitions
   checkForNewDay: () => {
-    const { morningCheckIn } = get();
+    const { morningCheckIn, isFirstTimeUser } = get();
     const now = new Date();
     const today = formatDate(now);
     
@@ -423,7 +446,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           ...state.morningCheckIn,
           isCompleted: false,
           completedAt: null,
-          shouldShowModal: shouldShowModalLogic(state.morningCheckIn, now),
+          shouldShowModal: shouldShowModalLogic(state.morningCheckIn, isFirstTimeUser, now),
           // Clear AI prompt so new personalized prompt gets generated
           aiGeneratedPrompt: null,
           aiPromptDate: null,
@@ -439,13 +462,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   initializeMorningCheckIn: async (): Promise<boolean> => {
     try {
       const now = new Date();
-      const { morningCheckIn } = get();
+      const { morningCheckIn, isFirstTimeUser } = get();
       
       // Check if it's a new day
       get().checkForNewDay();
       
       // Determine if modal should show
-      const shouldShow = shouldShowModalLogic(get().morningCheckIn, now);
+      const shouldShow = shouldShowModalLogic(get().morningCheckIn, isFirstTimeUser, now);
       
       if (shouldShow) {
         // Generate today's personalized prompt before showing modal
@@ -701,4 +724,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   setReminderEnabled: (reminderEnabled) => set({ reminderEnabled }),
   setReminderTime: (reminderTime) => set({ reminderTime }),
   setTestMode: (testMode) => set({ testMode }),
+  
+  // Mark user as no longer first-time user
+  markUserAsExperienced: () => {
+    console.log('👋 Marking user as experienced (no longer first-time)');
+    set({ isFirstTimeUser: false });
+    
+    // Persist this to localStorage so it persists across sessions
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('acorn_user_experienced', 'true');
+    }
+  },
 }));

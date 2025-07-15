@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,11 +23,11 @@ interface CalendarWeekViewProps {
   onDatePress: (date: Date) => void;
 }
 
-const SLOT_HEIGHT = 40; // Smaller slots for week view
+const SLOT_HEIGHT = 20; // Smaller slots for week view (reduced from 40)
 const HOUR_SLOTS = 4; // 4 slots per hour (15-minute increments)
 const TIME_LABEL_WIDTH = 60;
 const GRID_START_HOUR = 6;
-const GRID_END_HOUR = 23;
+const GRID_END_HOUR = 24; // Extended to 24:00 (12 AM)
 
 export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   selectedDate,
@@ -48,19 +48,50 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);
 
   const weekDates = getWeekDates(selectedDate);
-  const timeSlots = generateTimeSlots(new Date(), GRID_START_HOUR, GRID_END_HOUR, 15);
+  const timeSlots = generateTimeSlots(selectedDate, GRID_START_HOUR, GRID_END_HOUR, 15);
   const DAY_COLUMN_WIDTH = (containerWidth - TIME_LABEL_WIDTH) / 7;
+
+  // Auto-scroll to current time when viewing today
+  useEffect(() => {
+    const today = new Date();
+    const isViewingToday = weekDates.some(date => date.toDateString() === today.toDateString());
+    
+    if (isViewingToday) {
+      const currentY = getYFromTime(today);
+      const scrollY = Math.max(0, currentY - 100); // Offset by 100px to show some context above
+      
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          y: scrollY,
+          animated: true,
+        });
+      }, 500); // Small delay to ensure component is fully rendered
+    }
+  }, [selectedDate, weekDates]);
 
   // Get time entries for a specific date
   const getTimeEntriesForDate = (date: Date): CalendarTimeEntry[] => {
-    const dateKey = date.toISOString().split('T')[0];
+    // Use local date instead of ISO to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
     return timeEntries.filter(entry => entry.date === dateKey);
   };
 
   const getTimeFromY = (y: number): Date => {
-    const slotIndex = Math.floor(y / SLOT_HEIGHT);
-    const boundedIndex = Math.max(0, Math.min(slotIndex, timeSlots.length - 1));
-    return timeSlots[boundedIndex]?.start || new Date();
+    // Adjust Y position to account for visual offset
+    const adjustedY = y - (SLOT_HEIGHT / 2); // Offset by half a slot
+    const slotIndex = Math.floor(adjustedY / SLOT_HEIGHT);
+    const totalMinutes = slotIndex * 15; // 15-minute slots
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    // Create a time object with just the time (no date)
+    const time = new Date();
+    time.setHours(GRID_START_HOUR + hours, minutes, 0, 0);
+    
+    return time;
   };
 
   const getYFromTime = (time: Date): number => {
@@ -148,7 +179,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
     return date.toLocaleTimeString([], { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: false 
+      hour12: true 
     });
   };
 
@@ -158,7 +189,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
     return date.toLocaleTimeString([], { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: false 
+      hour12: true 
     });
   };
 
@@ -195,14 +226,15 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   const getCategoryColor = (category: string): string => {
     const colors: Record<string, string> = {
       'deep-work': '#6366f1',
-      'meetings': '#f59e0b',
-      'break': '#10b981',
       'social': '#ec4899',
-      'errands': '#8b5cf6',
+      'networking': '#8b5cf6',
+      'interview': '#f59e0b',
+      'travel': '#06b6d4',
+      'reading-emails': '#10b981',
+      'break': '#84cc16',
       'exercise': '#ef4444',
-      'learning': '#06b6d4',
-      'creative': '#f97316',
-      'personal': '#84cc16',
+      'learning': '#f97316',
+      'creative': '#06b6d4',
       'other': '#6b7280',
     };
     return colors[category] || colors.other;
@@ -238,7 +270,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
         activeOpacity={0.8}
       >
         <Text style={styles.entryActivity} numberOfLines={1}>
-          {entry.activity}
+          {entry.isFromCalendar ? '📅 ' : ''}{entry.activity || entry.title}
         </Text>
         <Text style={styles.entryTime} numberOfLines={1}>
           {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
@@ -261,18 +293,42 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
     
     if (todayIndex === -1) return null;
     
+    // Clamp position to visible range
+    const minY = 0;
+    const maxY = (GRID_END_HOUR - GRID_START_HOUR) * SLOT_HEIGHT * HOUR_SLOTS;
+    const clampedY = Math.max(minY, Math.min(currentY, maxY));
+    
+    // Check if current time is within visible range
+    const currentHour = now.getHours();
+    const isInVisibleRange = currentHour >= GRID_START_HOUR && currentHour < GRID_END_HOUR;
+    
+    // Calculate the exact left position for the day column
+    // Now relative to gridContainer, so we need to account for time labels
+    const dayColumnLeft = TIME_LABEL_WIDTH + todayIndex * DAY_COLUMN_WIDTH;
+    
     return (
-      <View style={[styles.currentTimeIndicator, { top: currentY }]}>
+      <View style={[styles.currentTimeIndicator, { top: clampedY }]}>
         <View style={styles.currentTimeCircle} />
         <View 
           style={[
             styles.currentTimeLine,
             {
-              left: todayIndex * DAY_COLUMN_WIDTH,
+              left: dayColumnLeft,
               width: DAY_COLUMN_WIDTH,
             }
           ]} 
         />
+        {!isInVisibleRange && (
+          <Text style={[
+            styles.currentTimeLabel,
+            {
+              left: dayColumnLeft,
+              width: DAY_COLUMN_WIDTH,
+            }
+          ]}>
+            {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        )}
       </View>
     );
   };
@@ -334,9 +390,10 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
     },
     timeLabelContainer: {
       height: SLOT_HEIGHT * HOUR_SLOTS,
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xs,
+      paddingTop: 2, // Align with the start of the hour slot
     },
     timeLabel: {
       fontSize: 10,
@@ -409,22 +466,44 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
     },
     currentTimeIndicator: {
       position: 'absolute',
-      height: 2,
+      height: 3,
       flexDirection: 'row',
       alignItems: 'center',
-      zIndex: 100,
+      zIndex: 1000,
     },
     currentTimeCircle: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
+      width: 10,
+      height: 10,
+      borderRadius: 5,
       backgroundColor: '#ef4444',
-      marginLeft: -4,
+      marginLeft: -5,
+      shadowColor: '#ef4444',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 3,
+      elevation: 5,
     },
     currentTimeLine: {
       position: 'absolute',
-      height: 2,
+      height: 3,
       backgroundColor: '#ef4444',
+      shadowColor: '#ef4444',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.6,
+      shadowRadius: 2,
+      elevation: 3,
+    },
+    currentTimeLabel: {
+      position: 'absolute',
+      top: -20,
+      textAlign: 'center',
+      fontSize: 10,
+      color: '#ef4444',
+      backgroundColor: `${theme.colors.background}E6`,
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.borderRadius.sm,
+      fontWeight: '600',
     },
     dragOverlay: {
       position: 'absolute',
@@ -523,34 +602,34 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                   },
                 ]}
               >
-                {/* Time slots for this day */}
-                {timeSlots.map((slot, slotIndex) => {
-                  const slotTime = new Date(date);
-                  slotTime.setHours(slot.start.getHours(), slot.start.getMinutes(), 0, 0);
-                  const isSelected = isTimeSlotSelected(slot.start, date);
-                  
-                  return (
-                    <TouchableOpacity
-                      key={slotIndex}
-                      style={[
-                        styles.timeSlot,
-                        {
-                          top: slotIndex * SLOT_HEIGHT,
-                          backgroundColor: isSelected 
-                            ? 'rgba(66, 165, 245, 0.3)' 
-                            : 'transparent',
-                        },
-                      ]}
-                      onPress={() => !isDragging && onTimeSlotPress(slotTime)}
-                      activeOpacity={isDragging ? 1 : 0.1}
-                    >
-                      {/* Quarter hour markers */}
-                      {slot.start.getMinutes() !== 0 && (
-                        <View style={styles.quarterHourLine} />
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
+                            {/* Time slots for this day */}
+            {timeSlots.map((slot, slotIndex) => {
+              const slotTime = new Date(date);
+              slotTime.setHours(slot.start.getHours(), slot.start.getMinutes(), 0, 0);
+              const isSelected = isTimeSlotSelected(slot.start, date);
+              
+              return (
+                <TouchableOpacity
+                  key={slotIndex}
+                  style={[
+                    styles.timeSlot,
+                    {
+                      top: slotIndex * SLOT_HEIGHT,
+                      backgroundColor: isSelected 
+                        ? 'rgba(66, 165, 245, 0.3)' 
+                        : 'transparent',
+                    },
+                  ]}
+                  onPress={() => !isDragging && onTimeSlotPress(slotTime)}
+                  activeOpacity={isDragging ? 1 : 0.1}
+                >
+                  {/* Quarter hour markers */}
+                  {slot.start.getMinutes() !== 0 && (
+                    <View style={styles.quarterHourLine} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
               </View>
             ))}
 
@@ -559,9 +638,6 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
               const dayEntries = getTimeEntriesForDate(date);
               return dayEntries.map(entry => renderTimeEntry(entry, dayIndex));
             })}
-
-            {/* Current time indicator */}
-            {renderCurrentTimeIndicator()}
 
             {/* Drag overlay */}
             {isDragging && dragStart && dragCurrent && dragDay && (
@@ -578,6 +654,9 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
               />
             )}
           </View>
+
+          {/* Current time indicator - moved outside weekGrid for proper positioning */}
+          {renderCurrentTimeIndicator()}
         </View>
       </ScrollView>
     </View>

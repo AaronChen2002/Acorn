@@ -10,16 +10,17 @@ Acorn is a **morning ritual and mindful productivity app** that combines:
 - **📊 Mood & Behavior Analytics**: Correlations between activities, emotions, and productivity
 - **🤖 AI-Powered Insights**: Contextual analysis of quantitative and qualitative data for personalized recommendations
 
-## ✅ Current Features (Phases 1-6 Complete)
+## ✅ Current Features (Phases 1-7 Complete)
 
 ### 🌅 Morning Ritual System
-- **Time-based modal** that appears after 5 AM daily
+- **Time-based modal** that appears after 5 AM daily (skipped for first-time users)
 - **Warm sunrise theme** with beautiful visual design
 - **Mood tracking** with custom slider components (energy & positivity levels)
 - **Emotion selection** with emoji-based grid interface
 - **AI-powered personalized reflection prompts** that adapt to your patterns
 - **Smart validation** requiring minimum engagement for meaningful data
 - **Test mode toggle** for development and privacy control
+- **Progressive onboarding** - new users explore the app before morning rituals
 
 ### 📅 Interactive Calendar Time Tracking
 - **Google Calendar-style visual interface** with 24-hour day view
@@ -30,6 +31,16 @@ Acorn is a **morning ritual and mindful productivity app** that combines:
 - **Quick reflection text** to capture context and insights
 - **Smart conflict detection** preventing overlapping activities
 - **Multiple view modes**: Week and Month views with dynamic width calculations
+
+### 📱 Google Calendar Integration (Phase 7 - NEW!)
+- **🔐 OAuth 2.0 with PKCE** - Secure authentication flow for Google Calendar
+- **⚡ Background sync** - Automatic event sync every 5 minutes
+- **🤖 AI event categorization** - Intelligent categorization of imported events
+- **🔄 Real-time sync** - Manual sync on-demand with visual feedback
+- **⚙️ Optional setup** - App works perfectly without Google Calendar configured
+- **🛡️ Graceful degradation** - Helpful setup instructions when not configured
+- **📊 Visual feedback** - Sync status, connection health, and error handling
+- **🧹 Smart OAuth handling** - Robust callback processing and stale state cleanup
 
 ### 🤖 AI-Powered Insights with Long-term Caching
 - **Intelligent pattern recognition** analyzing your check-ins and activities
@@ -54,9 +65,9 @@ Acorn is a **morning ritual and mindful productivity app** that combines:
 - **Performance optimized** with database indexing and efficient queries
 - **Warm morning color palette** for calming, intentional experience
 
-## 🚀 Upcoming Features (Phases 7-9 Roadmap)
+## 🚀 Upcoming Features (Phases 8-9 Roadmap)
 
-### Phase 7: Enhanced Calendar Features (Next 2-3 weeks)
+### Phase 8: Enhanced Calendar Features (Next 2-3 weeks)
 **Goal**: Professional-grade calendar functionality
 
 - **✋ Drag and drop**: Resize and move existing activities
@@ -66,7 +77,7 @@ Acorn is a **morning ritual and mindful productivity app** that combines:
 - **🎯 Smart scheduling suggestions** based on energy patterns
 - **📱 Enhanced mobile interactions** with gesture support
 
-### Phase 8: Advanced Data Visualization (Weeks 4-6)
+### Phase 9: Advanced Data Visualization (Weeks 4-6)
 **Goal**: Beautiful analytics and behavioral insights
 
 - **📈 Time allocation analytics** with interactive pie charts and breakdowns
@@ -77,7 +88,7 @@ Acorn is a **morning ritual and mindful productivity app** that combines:
 - **🎨 Activity heatmaps** for visual pattern recognition
 - **🔄 Insight trend analysis** showing how patterns evolve over time
 
-### Phase 9: Enhanced AI & Personalization (Weeks 7-9)
+### Phase 10: Enhanced AI & Personalization (Weeks 7-9)
 **Goal**: Deeper intelligence and contextual recommendations
 
 #### 🤖 **Advanced AI Features**
@@ -130,6 +141,10 @@ cd Acorn
 # Install dependencies
 npm install
 
+# Optional: Set up Google Calendar integration
+# See GOOGLE_OAUTH_SETUP.md for detailed instructions
+# Create .env.local with your Google OAuth credentials
+
 # Start development server
 npm run web          # For web development (recommended)
 npm run start        # For mobile development
@@ -138,6 +153,18 @@ npm run start        # For mobile development
 # Web: http://localhost:8081
 # Mobile: Scan QR code with Expo Go app
 ```
+
+### Optional: Google Calendar Setup
+For Google Calendar integration, create a `.env.local` file:
+```env
+EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_client_id_here.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_CLIENT_SECRET=your_client_secret_here
+EXPO_PUBLIC_OPENAI_API_KEY=your_openai_api_key_here
+```
+
+📖 **Complete setup guide**: See [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md)
+
+⚠️ **Note**: The app works perfectly without these environment variables. Google Calendar integration is completely optional.
 
 ### Development Commands
 ```bash
@@ -177,6 +204,9 @@ Acorn/
 │   │   │   ├── TopNavigation.tsx
 │   │   │   ├── SideMenu.tsx
 │   │   │   └── HamburgerButton.tsx
+│   │   ├── google/                   # Google Calendar integration ✅
+│   │   │   ├── GoogleCalendarIntegration.tsx
+│   │   │   └── GoogleCalendarTest.tsx
 │   │   └── TagInput.tsx              # Shared components
 │   ├── screens/
 │   │   ├── TimeTrackingScreen.tsx    # Primary interface ✅
@@ -186,7 +216,11 @@ Acorn/
 │   ├── services/
 │   │   ├── database.ts               # SQLite operations with caching ✅
 │   │   ├── webDatabase.ts            # Web-compatible database ✅
-│   │   └── aiService.ts              # OpenAI integration with caching ✅
+│   │   ├── aiService.ts              # OpenAI integration with caching ✅
+│   │   ├── googleAuthService.ts      # Google OAuth 2.0 with PKCE ✅
+│   │   ├── googleCalendarService.ts  # Google Calendar API integration ✅
+│   │   ├── backgroundSyncService.ts  # Automatic calendar sync ✅
+│   │   └── eventCategorizationService.ts # AI event categorization ✅
 │   ├── stores/
 │   │   ├── appStore.ts               # Main Zustand store with caching ✅
 │   │   └── calendarStore.ts          # Calendar state management ✅

@@ -38,7 +38,6 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
   const testMode = useAppStore((state) => state.testMode);
   const setTestMode = useAppStore((state) => state.setTestMode);
   const morningCheckIn = useAppStore((state) => state.morningCheckIn);
-  const [currentStep, setCurrentStep] = useState(0);
   const [energyLevel, setEnergyLevel] = useState(3);
   const [positivityLevel, setPositivityLevel] = useState(3);
   const [focusLevel, setFocusLevel] = useState(3);
@@ -49,8 +48,6 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
   const [mainGoal, setMainGoal] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const totalSteps = 9;
 
   const toggleTestMode = () => {
     setTestMode(!testMode);
@@ -64,57 +61,43 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
     );
   };
 
-  const validateCurrentStep = (): boolean => {
-    switch (currentStep) {
-      case 5: // Emotions step
-        if (selectedEmotions.length === 0) {
-          Alert.alert(
-            'Select Your Emotions',
-            'Please choose at least one emotion that describes how you feel this morning.',
-            [{ text: 'OK' }]
-          );
-          return false;
-        }
-        break;
-      case 6: // Main goal step
-        if (mainGoal.trim().length === 0) {
-          Alert.alert(
-            'Set Your Main Goal',
-            'Please share what your main goal or intention is for today.',
-            [{ text: 'OK' }]
-          );
-          return false;
-        }
-        break;
-      case 7: // Reflection step
-        if (reflectionResponse.trim().length < 10) {
-          Alert.alert(
-            'Add Your Reflection',
-            'Please share at least a few words about your reflection (minimum 10 characters).',
-            [{ text: 'OK' }]
-          );
-          return false;
-        }
-        break;
-      default:
-        return true;
+  const validateForm = (): boolean => {
+    // Check emotions
+    if (selectedEmotions.length === 0) {
+      Alert.alert(
+        'Select Your Emotions',
+        'Please choose at least one emotion that describes how you feel this morning.',
+        [{ text: 'OK' }]
+      );
+      return false;
     }
+    
+    // Check main goal
+    if (mainGoal.trim().length === 0) {
+      Alert.alert(
+        'Set Your Main Goal',
+        'Please share what your main goal or intention is for today.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+    
+    // Check reflection
+    if (reflectionResponse.trim().length < 10) {
+      Alert.alert(
+        'Add Your Reflection',
+        'Please share at least a few words about your reflection (minimum 10 characters).',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+    
     return true;
   };
 
-  const handleNext = () => {
-    if (validateCurrentStep()) {
-      if (currentStep < totalSteps - 1) {
-        setCurrentStep(currentStep + 1);
-      } else {
-        handleComplete();
-      }
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+  const handleSubmit = () => {
+    if (validateForm()) {
+      handleComplete();
     }
   };
 
@@ -123,9 +106,14 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
 
     try {
       const checkInData: Omit<MorningCheckInData, 'id' | 'completedAt'> = {
-        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        date: (() => {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        })(), // YYYY-MM-DD
         energyLevel,
-        positivityLevel,
         focusLevel,
         sleepQuality,
         yesterdayCompletion,
@@ -140,9 +128,7 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
       onComplete(checkInData);
 
       // Reset form for next time
-      setCurrentStep(0);
       setEnergyLevel(3);
-      setPositivityLevel(3);
       setFocusLevel(3);
       setSleepQuality(3);
       setYesterdayCompletion(3);
@@ -163,126 +149,111 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
   };
 
   const handleCancel = () => {
-    setCurrentStep(0);
     onCancel();
   };
 
-  const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 0:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>How did you sleep?</Text>
-            <View style={styles.stepContent}>
-              <MoodSlider
-                label="Sleep Quality"
-                value={sleepQuality}
-                onValueChange={setSleepQuality}
-              />
-            </View>
-          </View>
-        );
-      case 1:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Looking back at yesterday...</Text>
-            <View style={styles.stepContent}>
-              <MoodSlider
-                label="Did you complete what you wanted?"
-                value={yesterdayCompletion}
-                onValueChange={setYesterdayCompletion}
-              />
-            </View>
-          </View>
-        );
-      case 2:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>How's your energy?</Text>
-            <View style={styles.stepContent}>
-              <MoodSlider
-                label="Energy Level"
-                value={energyLevel}
-                onValueChange={setEnergyLevel}
-              />
-            </View>
-          </View>
-        );
-      case 3:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>How positive are you feeling?</Text>
-            <View style={styles.stepContent}>
-              <MoodSlider
-                label="Positivity Level"
-                value={positivityLevel}
-                onValueChange={setPositivityLevel}
-              />
-            </View>
-          </View>
-        );
-      case 4:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>How focused do you feel?</Text>
-            <View style={styles.stepContent}>
-              <MoodSlider
-                label="Focus Level"
-                value={focusLevel}
-                onValueChange={setFocusLevel}
-              />
-            </View>
-          </View>
-        );
-      case 5:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>What emotions are present?</Text>
-            <Text style={styles.stepSubtitle}>Select all that apply</Text>
-            <View style={styles.stepContent}>
-              <View style={styles.emotionsGrid}>
-                {EMOTIONS.map((emotion) => (
-                  <EmotionButton
-                    key={emotion.key}
-                    emotion={emotion.label}
-                    emoji={emotion.emoji}
-                    selected={selectedEmotions.includes(emotion.key)}
-                    onPress={() => toggleEmotion(emotion.key)}
+  const renderConsolidatedForm = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
+    const isAIGenerated = morningCheckIn.aiGeneratedPrompt && morningCheckIn.aiPromptDate === today;
+    
+    return (
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.scrollContent}>
+          {/* Sliders Row 1 */}
+          <View style={styles.section}>
+            <View style={styles.sliderRow}>
+              <View style={styles.sliderColumn}>
+                <Text style={styles.sliderTitle}>Sleep Quality</Text>
+                <View style={styles.moodContainer}>
+                  <MoodSlider
+                    label=""
+                    value={sleepQuality}
+                    onValueChange={setSleepQuality}
                   />
-                ))}
+                </View>
+              </View>
+              <View style={styles.sliderColumn}>
+                <Text style={styles.sliderTitle}>Yesterday Completion</Text>
+                <View style={styles.moodContainer}>
+                  <MoodSlider
+                    label=""
+                    value={yesterdayCompletion}
+                    onValueChange={setYesterdayCompletion}
+                  />
+                </View>
               </View>
             </View>
           </View>
-        );
-      case 6:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>What's your main goal for today?</Text>
-            <View style={styles.stepContent}>
-              <TextInput
-                style={styles.textInput}
-                multiline
-                numberOfLines={3}
-                placeholder="What do you want to focus on and accomplish today?"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={mainGoal}
-                onChangeText={setMainGoal}
-                maxLength={200}
-                textAlignVertical="top"
-              />
-              <Text style={styles.characterCount}>
-                {mainGoal.length}/200 characters
-              </Text>
+
+          {/* Sliders Row 2 */}
+          <View style={styles.section}>
+            <View style={styles.sliderRow}>
+              <View style={styles.sliderColumn}>
+                <Text style={styles.sliderTitle}>Energy Level</Text>
+                <View style={styles.moodContainer}>
+                  <MoodSlider
+                    label=""
+                    value={energyLevel}
+                    onValueChange={setEnergyLevel}
+                  />
+                </View>
+              </View>
+              <View style={styles.sliderColumn}>
+                <Text style={styles.sliderTitle}>Focus Level</Text>
+                <View style={styles.moodContainer}>
+                  <MoodSlider
+                    label=""
+                    value={focusLevel}
+                    onValueChange={setFocusLevel}
+                  />
+                </View>
+              </View>
             </View>
           </View>
-        );
-      case 7:
-        const today = new Date().toISOString().split('T')[0];
-        const isAIGenerated = morningCheckIn.aiGeneratedPrompt && morningCheckIn.aiPromptDate === today;
-        
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Morning Reflection</Text>
+
+          {/* Emotions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>What emotions are present?</Text>
+            <Text style={styles.sectionSubtext}>Select all that apply</Text>
+            <View style={styles.emotionsGrid}>
+              {EMOTIONS.filter(emotion => emotion.key !== 'overwhelmed').map((emotion) => (
+                <EmotionButton
+                  key={emotion.key}
+                  emotion={emotion.label}
+                  emoji={emotion.emoji}
+                  selected={selectedEmotions.includes(emotion.key)}
+                  onPress={() => toggleEmotion(emotion.key)}
+                />
+              ))}
+            </View>
+          </View>
+
+          {/* Main Goal */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>What's your main goal for today?</Text>
+            <TextInput
+              style={[styles.textInput, { minHeight: 50 }]}
+              multiline
+              numberOfLines={2}
+              placeholder="What do you want to focus on and accomplish today?"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={mainGoal}
+              onChangeText={setMainGoal}
+              maxLength={200}
+              textAlignVertical="top"
+            />
+            <Text style={styles.characterCount}>
+              {mainGoal.length}/200 characters
+            </Text>
+          </View>
+
+          {/* Reflection */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Morning Reflection</Text>
             <View style={styles.promptContainer}>
               <View style={styles.promptHeader}>
                 <Text style={styles.promptText}>"{currentPrompt}"</Text>
@@ -293,50 +264,44 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
                 </View>
               </View>
             </View>
-            <View style={styles.stepContent}>
-              <TextInput
-                style={styles.textInput}
-                multiline
-                numberOfLines={5}
-                placeholder="Share your thoughts and feelings about this prompt..."
-                placeholderTextColor={theme.colors.textSecondary}
-                value={reflectionResponse}
-                onChangeText={setReflectionResponse}
-                maxLength={1000}
-                textAlignVertical="top"
-              />
-              <Text style={styles.characterCount}>
-                {reflectionResponse.length}/1000 characters
-              </Text>
-            </View>
+            <TextInput
+              style={[styles.textInput, { minHeight: 60 }]}
+              multiline
+              numberOfLines={3}
+              placeholder="Share your thoughts and feelings about this prompt..."
+              placeholderTextColor={theme.colors.textSecondary}
+              value={reflectionResponse}
+              onChangeText={setReflectionResponse}
+              maxLength={1000}
+              textAlignVertical="top"
+            />
+            <Text style={styles.characterCount}>
+              {reflectionResponse.length}/1000 characters
+            </Text>
           </View>
-        );
-      case 8:
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepTitle}>Additional Notes</Text>
-            <Text style={styles.stepSubtitle}>Optional - anything else on your mind?</Text>
-            <View style={styles.stepContent}>
-              <TextInput
-                style={styles.textInput}
-                multiline
-                numberOfLines={3}
-                placeholder="Any other thoughts or observations?"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={notes}
-                onChangeText={setNotes}
-                maxLength={500}
-                textAlignVertical="top"
-              />
-              <Text style={styles.characterCount}>
-                {notes.length}/500 characters
-              </Text>
-            </View>
+
+          {/* Notes */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Additional Notes</Text>
+            <Text style={styles.sectionSubtext}>Optional - anything else on your mind?</Text>
+            <TextInput
+              style={[styles.textInput, { minHeight: 40 }]}
+              multiline
+              numberOfLines={1}
+              placeholder="Any other thoughts or observations?"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={notes}
+              onChangeText={setNotes}
+              maxLength={500}
+              textAlignVertical="top"
+            />
+            <Text style={styles.characterCount}>
+              {notes.length}/500 characters
+            </Text>
           </View>
-        );
-      default:
-        return null;
-    }
+        </View>
+      </ScrollView>
+    );
   };
 
   const styles = StyleSheet.create({
@@ -355,6 +320,7 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
     },
     scrollContent: {
       flexGrow: 1,
+      paddingBottom: theme.spacing.xl,
     },
     header: {
       position: 'relative',
@@ -470,13 +436,14 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
     },
     section: {
       paddingHorizontal: theme.spacing.xl,
-      paddingVertical: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
     },
     sectionTitle: {
-      fontSize: 20,
-      fontWeight: '700',
+      fontSize: 18,
+      fontWeight: '600',
       color: theme.colors.text,
-      marginBottom: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
       letterSpacing: -0.5,
     },
     sectionSubtext: {
@@ -484,10 +451,24 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
       fontWeight: '400',
       color: theme.colors.textSecondary,
     },
+    sliderRow: {
+      flexDirection: 'row',
+      gap: theme.spacing.md,
+    },
+    sliderColumn: {
+      flex: 1,
+    },
+    sliderTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.colors.text,
+      marginBottom: theme.spacing.sm,
+      textAlign: 'center',
+    },
     moodContainer: {
       backgroundColor: 'rgba(30, 41, 59, 0.8)',
-      borderRadius: 16,
-      padding: theme.spacing.md,
+      borderRadius: 12,
+      padding: theme.spacing.sm,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
@@ -504,8 +485,8 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
       flexWrap: 'wrap',
       gap: theme.spacing.sm,
       backgroundColor: 'rgba(30, 41, 59, 0.8)',
-      borderRadius: 16,
-      padding: theme.spacing.lg,
+      borderRadius: 12,
+      padding: theme.spacing.md,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
@@ -675,12 +656,11 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
     },
     textInput: {
       backgroundColor: 'rgba(30, 41, 59, 0.8)',
-      borderRadius: 16,
-      padding: theme.spacing.lg,
+      borderRadius: 12,
+      padding: theme.spacing.md,
       fontSize: 16,
       color: theme.colors.text,
       textAlignVertical: 'top',
-      minHeight: 120,
       borderWidth: 2,
       borderColor: 'rgba(255, 255, 255, 0.2)',
       lineHeight: 22,
@@ -764,55 +744,27 @@ export const MorningCheckInModal: React.FC<MorningCheckInModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Progress Indicator */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View 
-                  style={[
-                    styles.progressFill, 
-                    { width: `${((currentStep + 1) / totalSteps) * 100}%` }
-                  ]} 
-                />
-              </View>
-              <Text style={styles.progressText}>
-                {currentStep + 1} of {totalSteps}
-              </Text>
-            </View>
+            {/* Consolidated Form Content */}
+            {renderConsolidatedForm()}
 
-            {/* Current Step Content */}
-            {renderCurrentStep()}
-
-            {/* Navigation Buttons */}
-            <View style={styles.navigationContainer}>
-              {currentStep > 0 ? (
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={handlePrevious}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.backButtonText}>Back</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={handleCancel}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.backButtonText}>Maybe Later</Text>
-                </TouchableOpacity>
-              )}
+            {/* Action Buttons */}
+            <View style={styles.actionContainer}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={handleCancel}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelButtonText}>Maybe Later</Text>
+              </TouchableOpacity>
               
               <TouchableOpacity
                 style={styles.nextButton}
-                onPress={handleNext}
+                onPress={handleSubmit}
                 activeOpacity={0.8}
                 disabled={isSubmitting}
               >
                 <Text style={styles.nextButtonText}>
-                  {currentStep === totalSteps - 1 
-                    ? (isSubmitting ? 'Saving...' : 'Complete') 
-                    : 'Next'
-                  }
+                  {isSubmitting ? 'Saving...' : 'Complete Check-in'}
                 </Text>
               </TouchableOpacity>
             </View>

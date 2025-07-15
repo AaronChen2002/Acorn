@@ -16,3 +16,9 @@ export { SideMenu } from './SideMenu';
 export { TagInput } from './TagInput';
 export { TimePicker } from './TimePicker';
 export { TopNavigation } from './TopNavigation'; 
+
+// Analytics & Chart Components
+export * from './analytics';
+export * from './GoogleCalendarTest';
+export { GoogleCalendarIntegration } from './GoogleCalendarIntegration';
+export { GoogleCalendarDiagnostics } from './GoogleCalendarDiagnostics'; 

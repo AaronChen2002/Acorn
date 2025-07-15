@@ -17,7 +17,7 @@ This document provides a detailed overview of the Acorn app architecture, design
 ### Application Structure
 
 ```
-Acorn follows a layered architecture with AI integration and caching:
+Acorn follows a layered architecture with AI integration, caching, and Google Calendar sync:
 
 ┌─────────────────────────────────────────────────────────────┐
 │                     Presentation Layer                      │
@@ -30,6 +30,7 @@ Acorn follows a layered architecture with AI integration and caching:
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │  Calendar Components, Morning Check-in, Navigation     │   │
 │  │  (MoodSlider, TagInput, CalendarGrid, SideMenu, etc.)  │   │
+│  │  + Google Calendar Integration Components               │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                               │
 │                     Business Logic Layer                     │
@@ -37,14 +38,22 @@ Acorn follows a layered architecture with AI integration and caching:
 │  │     Zustand Store (appStore.ts) + Calendar Store       │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                               │
+│                   External Service Layer                     │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │   Google OAuth Service + Google Calendar API Service   │   │
+│  │   + Background Sync Service + Event Categorization     │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                               │
 │                     AI & Caching Layer                      │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │   AI Service + Insight Cache + Data Hash Validation    │   │
+│  │   + AI Event Categorization + Smart Caching            │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                               │
 │                     Data Layer                               │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │      SQLite Database with Optimized Schemas            │   │
+│  │      + Google Calendar Event Storage                   │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -59,6 +68,46 @@ Acorn follows a layered architecture with AI integration and caching:
 6. **AI Integration**: OpenAI API with intelligent caching and pattern analysis
 7. **Performance Optimization**: Database indexing, data hashing, and smart caching
 8. **Privacy-First**: Local data storage with test mode for development
+9. **Optional External Services**: Google Calendar integration is completely optional
+10. **Graceful Degradation**: App functions fully without external service configuration
+11. **Progressive Enhancement**: Features unlock as users engage with the app
+
+### Google Calendar Integration Architecture
+
+The Google Calendar integration follows a secure, optional architecture pattern:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Google Calendar Flow                       │
+│                                                             │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐ │
+│  │   Environment   │    │  OAuth Service  │    │  Calendar API   │ │
+│  │   Validation    │───▶│   (PKCE)        │───▶│   Service       │ │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘ │
+│           │                       │                       │         │
+│           ▼                       ▼                       ▼         │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐ │
+│  │ Graceful        │    │ Secure Token    │    │ Background      │ │
+│  │ Degradation     │    │ Management      │    │ Sync Service    │ │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘ │
+│                                                           │         │
+│                                                           ▼         │
+│                                        ┌─────────────────────────┐ │
+│                                        │  AI Event              │ │
+│                                        │  Categorization        │ │
+│                                        └─────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Integration Principles:**
+
+1. **Environment Variable Validation**: Checks for required OAuth credentials with user-friendly error messages
+2. **OAuth 2.0 with PKCE**: Secure authentication flow with proof key for code exchange
+3. **Background Sync**: Automatic event synchronization every 5 minutes when authenticated
+4. **AI-Powered Categorization**: Intelligent event categorization using OpenAI API
+5. **Graceful Degradation**: Complete app functionality without Google Calendar configured
+6. **Progressive Enhancement**: Optional features that enhance the core experience
+7. **Robust Error Handling**: Comprehensive error handling with user-friendly feedback
 
 ## 🔄 State Management
 

@@ -4,7 +4,6 @@ import { useAppStore } from '../stores/appStore';
 import { useCalendarStore } from '../stores/calendarStore';
 import { CalendarGrid } from '../components/CalendarGrid';
 import { CalendarWeekView } from '../components/CalendarWeekView';
-import { CalendarMonthView } from '../components/CalendarMonthView';
 import { ViewModeSwitcher } from '../components/ViewModeSwitcher';
 import { CalendarHeader } from '../components/CalendarHeader';
 import { ActivityCreationModal } from '../components/ActivityCreationModal';
@@ -55,7 +54,14 @@ export const TimeTrackingScreen: React.FC = () => {
   };
 
   const handleTodayPress = () => {
-    navigateToDate(new Date());
+    const today = new Date();
+    console.log('Today button pressed:', {
+      date: today.toDateString(),
+      time: today.toLocaleTimeString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      iso: today.toISOString()
+    });
+    navigateToDate(today);
   };
 
   // Handle date selection from different views
@@ -207,14 +213,6 @@ export const TimeTrackingScreen: React.FC = () => {
             onTimeSlotDrag={handleTimeSlotDrag}
             onDragComplete={handleDragComplete}
             onEntryPress={handleTimeEntryPress}
-            onDatePress={handleDatePress}
-          />
-        );
-      case 'month':
-        return (
-          <CalendarMonthView
-            selectedDate={selectedDate}
-            timeEntries={timeEntries}
             onDatePress={handleDatePress}
           />
         );

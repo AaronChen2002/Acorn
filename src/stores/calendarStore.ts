@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Platform } from 'react-native';
-import { CalendarTimeEntry, CalendarState, CalendarSelection, TimeSlot, ActivityCreationData, ViewMode, getWeekStart, getWeekEnd, getMonthStart, getMonthEnd } from '../types/calendar';
-import { generateId } from './appStore';
+import { CalendarTimeEntry, CalendarState, CalendarSelection, TimeSlot, ActivityCreationData, ViewMode, getWeekStart, getWeekEnd } from '../types/calendar';
+import { generateId, useAppStore } from './appStore';
 import { databaseService } from '../services/database';
 import { webDatabaseService } from '../services/webDatabase';
 
@@ -20,6 +20,7 @@ interface CalendarStore extends CalendarState {
   
   // Time entries
   addTimeEntry: (timeSlot: TimeSlot, activityData: ActivityCreationData) => Promise<void>;
+  addCalendarEntry: (entry: CalendarTimeEntry) => Promise<void>; // For importing from external calendars
   updateTimeEntry: (id: string, updates: Partial<CalendarTimeEntry>) => Promise<void>;
   deleteTimeEntry: (id: string) => Promise<void>;
   loadTimeEntriesForDate: (date: Date) => Promise<void>;
@@ -41,19 +42,33 @@ interface CalendarStore extends CalendarState {
 }
 
 const formatDateKey = (date: Date): string => {
-  return date.toISOString().split('T')[0];
+  // Use local date instead of ISO to avoid timezone issues
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 export const useCalendarStore = create<CalendarStore>((set, get) => ({
   // Initial state
-  selectedDate: new Date(),
+  selectedDate: (() => {
+    const now = new Date();
+    console.log('Calendar store initialized with date:', {
+      date: now.toDateString(),
+      time: now.toLocaleTimeString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      iso: now.toISOString()
+    });
+    return now;
+  })(),
   timeEntries: [],
   selection: null,
   viewMode: 'day', // Default to day view
   isActivityModalVisible: false,
   editingEntry: null,
+  // Calendar view settings
   viewStartHour: 6,
-  viewEndHour: 23,
+  viewEndHour: 24, // Extended to 12 AM
   slotDuration: 15,
   
   // Date selection
@@ -74,15 +89,17 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
       const weekStart = getWeekStart(selectedDate);
       const weekEnd = getWeekEnd(selectedDate);
       get().loadTimeEntriesForDateRange(weekStart, weekEnd);
-    } else if (mode === 'month') {
-      const monthStart = getMonthStart(selectedDate);
-      const monthEnd = getMonthEnd(selectedDate);
-      get().loadTimeEntriesForDateRange(monthStart, monthEnd);
     }
   },
   
   navigateToDate: (date: Date) => {
     const { viewMode } = get();
+    console.log('Navigating to date:', {
+      date: date.toDateString(),
+      time: date.toLocaleTimeString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      iso: date.toISOString()
+    });
     set({ selectedDate: date });
     
     // Load appropriate data for the new date
@@ -92,10 +109,6 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
       const weekStart = getWeekStart(date);
       const weekEnd = getWeekEnd(date);
       get().loadTimeEntriesForDateRange(weekStart, weekEnd);
-    } else if (viewMode === 'month') {
-      const monthStart = getMonthStart(date);
-      const monthEnd = getMonthEnd(date);
-      get().loadTimeEntriesForDateRange(monthStart, monthEnd);
     }
   },
   
@@ -153,6 +166,13 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
       updatedAt: new Date(),
     };
     
+    // Mark user as experienced after they create their first calendar entry
+    const appState = useAppStore.getState();
+    if (appState.isFirstTimeUser) {
+      console.log('📅 User created their first calendar entry - marking as experienced');
+      appState.markUserAsExperienced();
+    }
+    
     // Save to database
     await dbService.saveCalendarTimeEntry(newEntry);
     
@@ -162,6 +182,30 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
       isActivityModalVisible: false,
       selection: null,
     }));
+  },
+
+  // Add calendar entry directly (for external calendar imports)
+  addCalendarEntry: async (entry: CalendarTimeEntry) => {
+    // Save to database
+    await dbService.saveCalendarTimeEntry(entry);
+    
+    // Update store (check for duplicates by ID)
+    set((state) => {
+      const existingEntry = state.timeEntries.find(e => e.id === entry.id);
+      if (existingEntry) {
+        // Update existing entry
+        return {
+          timeEntries: state.timeEntries.map(e => 
+            e.id === entry.id ? { ...entry, updatedAt: new Date() } : e
+          ),
+        };
+      } else {
+        // Add new entry
+        return {
+          timeEntries: [...state.timeEntries, entry],
+        };
+      }
+    });
   },
   
   updateTimeEntry: async (id: string, updates: Partial<CalendarTimeEntry>) => {

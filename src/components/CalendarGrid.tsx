@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,11 +24,11 @@ interface CalendarGridProps {
   onEntryPress: (entry: CalendarTimeEntry) => void;
 }
 
-const SLOT_HEIGHT = 60; // Height of each 15-minute slot
+const SLOT_HEIGHT = 30; // Height of each 15-minute slot (reduced from 60)
 const HOUR_SLOTS = 4; // Number of 15-minute slots per hour
 const TIME_LABEL_WIDTH = 80;
 const GRID_START_HOUR = 6;
-const GRID_END_HOUR = 23;
+const GRID_END_HOUR = 24; // Extended to 24:00 (12 AM)
 
 export const CalendarGrid: React.FC<CalendarGridProps> = ({
   date,
@@ -46,6 +46,22 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);
 
   const timeSlots = generateTimeSlots(date, GRID_START_HOUR, GRID_END_HOUR, 15);
+
+  // Auto-scroll to current time when viewing today
+  useEffect(() => {
+    const today = new Date();
+    if (date.toDateString() === today.toDateString()) {
+      const currentY = getYFromTime(today);
+      const scrollY = Math.max(0, currentY - 100); // Offset by 100px to show some context above
+      
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          y: scrollY,
+          animated: true,
+        });
+      }, 500); // Small delay to ensure component is fully rendered
+    }
+  }, [date]);
 
   const getTimeFromY = (y: number): Date => {
     const slotIndex = Math.floor(y / SLOT_HEIGHT);
@@ -124,7 +140,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     return date.toLocaleTimeString([], { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: false 
+      hour12: true 
     });
   };
 
@@ -134,7 +150,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     return date.toLocaleTimeString([], { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: false 
+      hour12: true 
     });
   };
 
@@ -191,7 +207,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
         activeOpacity={0.8}
       >
         <Text style={styles.entryActivity} numberOfLines={1}>
-          {entry.activity}
+          {entry.isFromCalendar ? '📅 ' : ''}{entry.activity || entry.title}
         </Text>
         <Text style={styles.entryTime}>
           {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
@@ -208,14 +224,15 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   const getCategoryColor = (category: string): string => {
     const colors: Record<string, string> = {
       'deep-work': '#6366f1',
-      'meetings': '#f59e0b',
-      'break': '#10b981',
       'social': '#ec4899',
-      'errands': '#8b5cf6',
+      'networking': '#8b5cf6',
+      'interview': '#f59e0b',
+      'travel': '#06b6d4',
+      'reading-emails': '#10b981',
+      'break': '#84cc16',
       'exercise': '#ef4444',
-      'learning': '#06b6d4',
-      'creative': '#f97316',
-      'personal': '#84cc16',
+      'learning': '#f97316',
+      'creative': '#06b6d4',
       'other': '#6b7280',
     };
     return colors[category] || colors.other;
@@ -228,12 +245,32 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
 
   const renderCurrentTimeIndicator = () => {
     const now = new Date();
+    const today = new Date();
+    
+    // Only show if we're viewing today's date
+    if (date.toDateString() !== today.toDateString()) {
+      return null;
+    }
+    
+    // Calculate position, but clamp it to visible range
     const currentY = getYFromTime(now);
+    const minY = 0;
+    const maxY = (GRID_END_HOUR - GRID_START_HOUR) * SLOT_HEIGHT * HOUR_SLOTS;
+    const clampedY = Math.max(minY, Math.min(currentY, maxY));
+    
+    // Check if current time is within visible range
+    const currentHour = now.getHours();
+    const isInVisibleRange = currentHour >= GRID_START_HOUR && currentHour < GRID_END_HOUR;
     
     return (
-      <View style={[styles.currentTimeIndicator, { top: currentY }]}>
+      <View style={[styles.currentTimeIndicator, { top: clampedY }]}>
         <View style={styles.currentTimeCircle} />
         <View style={styles.currentTimeLine} />
+        {!isInVisibleRange && (
+          <Text style={styles.currentTimeLabel}>
+            {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        )}
       </View>
     );
   };
@@ -333,22 +370,45 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
       position: 'absolute',
       left: 0,
       right: 0,
-      height: 2,
+      height: 3,
       flexDirection: 'row',
       alignItems: 'center',
-      zIndex: 100,
+      zIndex: 1000,
     },
     currentTimeCircle: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
+      width: 10,
+      height: 10,
+      borderRadius: 5,
       backgroundColor: '#ef4444',
-      marginLeft: -4,
+      marginLeft: -5,
+      shadowColor: '#ef4444',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 3,
+      elevation: 5,
     },
     currentTimeLine: {
       flex: 1,
-      height: 2,
+      height: 3,
       backgroundColor: '#ef4444',
+      shadowColor: '#ef4444',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.6,
+      shadowRadius: 2,
+      elevation: 3,
+    },
+    currentTimeLabel: {
+      position: 'absolute',
+      top: -20, // Adjust as needed for spacing
+      left: 0,
+      right: 0,
+      textAlign: 'center',
+      fontSize: 10,
+      color: '#ef4444',
+      backgroundColor: `${theme.colors.background}E6`,
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.borderRadius.sm,
     },
     selectionOverlay: {
       position: 'absolute',
