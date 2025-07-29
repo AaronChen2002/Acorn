@@ -15,15 +15,18 @@ interface ActivityBreakdownChartProps {
 const CATEGORY_COLORS: Record<string, string> = {
   'deep-work': CHART_COLORS.primary,
   'social': CHART_COLORS.secondary,
-  'networking': '#8b5cf6',
+  'side-work': '#1e3a8a',      // Dark blue
+  'self-care': '#60a5fa',      // Light blue
   'interview': '#f59e0b',
   'travel': '#06b6d4',
   'reading-emails': '#10b981',
   'break': '#84cc16',
-  'exercise': CHART_COLORS.positive,
+  'exercise': '#60a5fa',       // Now maps to self-care
   'learning': '#f97316',
-  'creative': '#06b6d4',
-  'other': CHART_COLORS.neutral,
+  'creative': '#60a5fa',       // Now maps to self-care
+  'networking': '#1e3a8a',     // Now maps to side-work
+  'hobbies': '#60a5fa',        // Now maps to self-care
+  'other': '#87ceeb',          // Light sky blue
 };
 
 export const ActivityBreakdownChart: React.FC<ActivityBreakdownChartProps> = ({

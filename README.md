@@ -10,7 +10,7 @@ Acorn is a **morning ritual and mindful productivity app** that combines:
 - **📊 Mood & Behavior Analytics**: Correlations between activities, emotions, and productivity
 - **🤖 AI-Powered Insights**: Contextual analysis of quantitative and qualitative data for personalized recommendations
 
-## ✅ Current Features (Phases 1-7 Complete)
+## ✅ Current Features (Phases 1-8 Complete)
 
 ### 🌅 Morning Ritual System
 - **Time-based modal** that appears after 5 AM daily (skipped for first-time users)
@@ -32,15 +32,15 @@ Acorn is a **morning ritual and mindful productivity app** that combines:
 - **Smart conflict detection** preventing overlapping activities
 - **Multiple view modes**: Week and Month views with dynamic width calculations
 
-### 📱 Google Calendar Integration (Phase 7 - NEW!)
-- **🔐 OAuth 2.0 with PKCE** - Secure authentication flow for Google Calendar
-- **⚡ Background sync** - Automatic event sync every 5 minutes
-- **🤖 AI event categorization** - Intelligent categorization of imported events
-- **🔄 Real-time sync** - Manual sync on-demand with visual feedback
-- **⚙️ Optional setup** - App works perfectly without Google Calendar configured
-- **🛡️ Graceful degradation** - Helpful setup instructions when not configured
-- **📊 Visual feedback** - Sync status, connection health, and error handling
-- **🧹 Smart OAuth handling** - Robust callback processing and stale state cleanup
+### 📱 Unified Google Authentication & Calendar (Phase 8 - ENHANCED!)
+- **🔗 Single Sign-On Flow** - One "Sign in with Google" button for all features
+- **🔐 Unified OAuth Scopes** - Firebase authentication + Google Calendar access
+- **⚡ Background calendar sync** - Automatic event sync every 5 minutes
+- **🤖 Enhanced AI categorization** - Intelligent categorization with detailed guidelines
+- **🔄 Cloud data sync** - Firestore integration for cross-device synchronization
+- **⚙️ Optional setup** - App works perfectly without Google services configured
+- **🛡️ Graceful degradation** - Clear setup instructions when not configured
+- **🧹 Professional UI** - Clean, emoji-free interface with clear connection status
 
 ### 🤖 AI-Powered Insights with Long-term Caching
 - **Intelligent pattern recognition** analyzing your check-ins and activities
@@ -51,12 +51,19 @@ Acorn is a **morning ritual and mindful productivity app** that combines:
 - **Test mode support** using sample data for development and privacy
 - **Dynamic insight generation** showing 1-10+ insights based on actual patterns
 
-### 🍃 Streamlined Navigation
+### 📊 Enhanced Category System (Phase 8 - NEW!)
+- **5 Intentional Life Areas** - Work, Side Work, Social, Self Care, Other
+- **Horizontal chip layout** - space-efficient visual design with color coding
+- **Enhanced AI guidelines** - detailed categorization rules for better accuracy
+- **Dark blue to light sky blue spectrum** - professional and distinguishable color palette
+
+### 🍃 Streamlined Navigation & UX Polish
 - **Time tracking as primary interface** - focus on daily productivity
-- **Hamburger side menu** - clean, minimal navigation with developer settings
+- **Clean hamburger side menu** - removed redundant time tracking and diagnostics sections
 - **Check-in review panel** - access completed morning rituals
 - **Insights screen** - dedicated space for AI-generated pattern analysis
-- **No tabs** - reduced cognitive load with single-screen focus
+- **Preserved scroll position** - calendar stays in place during interactions
+- **Professional authentication UI** - clear connection status without emoji clutter
 
 ### ♿ Accessibility & Polish
 - **Full screen reader support** with comprehensive accessibility labels
@@ -65,28 +72,36 @@ Acorn is a **morning ritual and mindful productivity app** that combines:
 - **Performance optimized** with database indexing and efficient queries
 - **Warm morning color palette** for calming, intentional experience
 
-## 🚀 Upcoming Features (Phases 8-9 Roadmap)
+## 🚀 Current Development Status
 
-### Phase 8: Enhanced Calendar Features (Next 2-3 weeks)
+### ✅ Phase 8 Complete: Unified Authentication & Enhanced Categories
+- **Unified Google Authentication** - Single sign-on for Firebase + Calendar
+- **Enhanced Category System** - 7 intentional life areas with professional design
+- **UI/UX Polish** - Streamlined navigation and calendar scroll improvements
+- **⚠️ Known Issue**: Authentication state persistence needs debugging
+
+## 🚀 Upcoming Features (Phase 9+ Roadmap)
+
+### Phase 9: Advanced Data Visualization & Analytics
+**Goal**: Beautiful insights dashboard with behavioral analytics
+
+- **📈 Category time allocation** - Interactive pie charts and breakdowns with new life areas
+- **😊 Mood correlation analysis** - How activities affect emotional well-being
+- **⚡ Energy pattern visualization** - Peak performance times and trends
+- **🧠 Productivity insights** - Deep analysis using enhanced category system
+- **📊 Weekly/monthly comparisons** - Progress tracking over time
+- **🎨 Activity heatmaps** - Visual pattern recognition for life balance
+- **🔄 Trend analysis** - How patterns evolve with new categorization
+
+### Phase 10: Enhanced Calendar Features
 **Goal**: Professional-grade calendar functionality
 
 - **✋ Drag and drop**: Resize and move existing activities
 - **🔍 Activity management**: Edit, delete, search, and filter
 - **📋 Activity templates** for quick entry of common tasks
 - **⏰ Current time indicator** showing real-time progress
-- **🎯 Smart scheduling suggestions** based on energy patterns
+- **🎯 Smart scheduling suggestions** based on energy patterns and life areas
 - **📱 Enhanced mobile interactions** with gesture support
-
-### Phase 9: Advanced Data Visualization (Weeks 4-6)
-**Goal**: Beautiful analytics and behavioral insights
-
-- **📈 Time allocation analytics** with interactive pie charts and breakdowns
-- **😊 Mood correlation charts** showing how activities affect emotional state
-- **⚡ Energy level trends** throughout different times of day
-- **🧠 Productivity patterns** identifying peak performance windows
-- **📊 Weekly/monthly comparisons** and progress tracking
-- **🎨 Activity heatmaps** for visual pattern recognition
-- **🔄 Insight trend analysis** showing how patterns evolve over time
 
 ### Phase 10: Enhanced AI & Personalization (Weeks 7-9)
 **Goal**: Deeper intelligence and contextual recommendations

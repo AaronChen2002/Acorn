@@ -63,7 +63,7 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
   })(),
   timeEntries: [],
   selection: null,
-  viewMode: 'day', // Default to day view
+  viewMode: 'week', // Default to week view (Google Calendar style)
   isActivityModalVisible: false,
   editingEntry: null,
   // Calendar view settings

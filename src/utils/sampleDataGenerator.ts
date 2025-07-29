@@ -51,21 +51,24 @@ const SAMPLE_GOALS = [
 
 // Sample activities with realistic durations
 const SAMPLE_ACTIVITIES = [
-  { name: 'Morning workout', category: 'Exercise', baseMinutes: 45, variance: 15 },
+  { name: 'Morning workout', category: 'Self Care', baseMinutes: 45, variance: 15 },
   { name: 'Team meeting', category: 'Work', baseMinutes: 60, variance: 30 },
   { name: 'Focused work session', category: 'Work', baseMinutes: 120, variance: 60 },
-  { name: 'Lunch break', category: 'Personal Care', baseMinutes: 30, variance: 15 },
-  { name: 'Reading', category: 'Learning', baseMinutes: 45, variance: 30 },
-  { name: 'Cooking dinner', category: 'Household', baseMinutes: 40, variance: 20 },
-  { name: 'Walk in park', category: 'Exercise', baseMinutes: 30, variance: 15 },
+  { name: 'Lunch break', category: 'Self Care', baseMinutes: 30, variance: 15 },
+  { name: 'Reading', category: 'Self Care', baseMinutes: 45, variance: 30 },
+  { name: 'Cooking dinner', category: 'Other', baseMinutes: 40, variance: 20 },
+  { name: 'Walk in park', category: 'Self Care', baseMinutes: 30, variance: 15 },
   { name: 'Video call with family', category: 'Social', baseMinutes: 45, variance: 30 },
-  { name: 'Meditation', category: 'Spiritual', baseMinutes: 20, variance: 10 },
-  { name: 'Creative writing', category: 'Creative', baseMinutes: 60, variance: 45 },
-  { name: 'House cleaning', category: 'Household', baseMinutes: 90, variance: 30 },
-  { name: 'Learning new skill', category: 'Learning', baseMinutes: 75, variance: 45 },
-  { name: 'Movie night', category: 'Entertainment', baseMinutes: 120, variance: 30 },
-  { name: 'Grocery shopping', category: 'Household', baseMinutes: 45, variance: 15 },
-  { name: 'Yoga class', category: 'Exercise', baseMinutes: 60, variance: 15 }
+  { name: 'Meditation', category: 'Self Care', baseMinutes: 20, variance: 10 },
+  { name: 'Creative writing', category: 'Self Care', baseMinutes: 60, variance: 45 },
+  { name: 'House cleaning', category: 'Other', baseMinutes: 90, variance: 30 },
+  { name: 'Learning new skill', category: 'Self Care', baseMinutes: 75, variance: 45 },
+  { name: 'Movie night', category: 'Self Care', baseMinutes: 120, variance: 30 },
+  { name: 'Grocery shopping', category: 'Other', baseMinutes: 45, variance: 15 },
+  { name: 'Yoga class', category: 'Self Care', baseMinutes: 60, variance: 15 },
+  { name: 'Networking event', category: 'Side Work', baseMinutes: 90, variance: 30 },
+  { name: 'Freelance project', category: 'Side Work', baseMinutes: 120, variance: 60 },
+  { name: 'Coffee with colleague', category: 'Side Work', baseMinutes: 45, variance: 15 }
 ];
 
 // Emotional tags for activities

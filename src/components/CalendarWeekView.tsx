@@ -23,7 +23,7 @@ interface CalendarWeekViewProps {
   onDatePress: (date: Date) => void;
 }
 
-const SLOT_HEIGHT = 20; // Smaller slots for week view (reduced from 40)
+const SLOT_HEIGHT = 15; // Smaller slots for week view (reduced from 20 for 25% more zoom out)
 const HOUR_SLOTS = 4; // 4 slots per hour (15-minute increments)
 const TIME_LABEL_WIDTH = 60;
 const GRID_START_HOUR = 6;
@@ -46,15 +46,25 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   const [dragDay, setDragDay] = useState<Date | null>(null);
   const [containerWidth, setContainerWidth] = useState(Dimensions.get('window').width);
   const scrollViewRef = useRef<ScrollView>(null);
+  const hasAutoScrolled = useRef(false);
+  const currentWeekKey = useRef(selectedDate.toDateString());
 
   const weekDates = getWeekDates(selectedDate);
   const timeSlots = generateTimeSlots(selectedDate, GRID_START_HOUR, GRID_END_HOUR, 15);
   const DAY_COLUMN_WIDTH = (containerWidth - TIME_LABEL_WIDTH) / 7;
 
-  // Auto-scroll to current time when viewing today
+  // Auto-scroll to current time when viewing today - only on initial load or week change
   useEffect(() => {
     const today = new Date();
     const isViewingToday = weekDates.some(date => date.toDateString() === today.toDateString());
+    const weekKey = selectedDate.toDateString();
+    const weekChanged = currentWeekKey.current !== weekKey;
+    
+    // Only auto-scroll if:
+    // 1. It's viewing today AND we haven't auto-scrolled yet, OR
+    // 2. The week actually changed
+    if ((isViewingToday && !hasAutoScrolled.current) || weekChanged) {
+      currentWeekKey.current = weekKey;
     
     if (isViewingToday) {
       const currentY = getYFromTime(today);
@@ -65,7 +75,9 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
           y: scrollY,
           animated: true,
         });
+          hasAutoScrolled.current = true;
       }, 500); // Small delay to ensure component is fully rendered
+      }
     }
   }, [selectedDate, weekDates]);
 
@@ -225,17 +237,22 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
 
   const getCategoryColor = (category: string): string => {
     const colors: Record<string, string> = {
-      'deep-work': '#6366f1',
-      'social': '#ec4899',
-      'networking': '#8b5cf6',
-      'interview': '#f59e0b',
-      'travel': '#06b6d4',
-      'reading-emails': '#10b981',
-      'break': '#84cc16',
-      'exercise': '#ef4444',
-      'learning': '#f97316',
-      'creative': '#06b6d4',
-      'other': '#6b7280',
+      'work': '#1e293b',           // Dark blue (lighter than before)
+      'side-work': '#1e3a8a',      // Dark blue
+      'social': '#3b82f6',         // Blue
+      'self-care': '#60a5fa',      // Light blue
+      'other': '#7dd3fc',          // Sky blue (darker than before)
+      // Legacy categories for backward compatibility
+      'deep-work': '#1e293b',
+      'interview': '#1e3a8a',
+      'travel': '#3b82f6',
+      'reading-emails': '#60a5fa',
+      'break': '#7dd3fc',
+      'exercise': '#60a5fa',       // Now maps to self-care
+      'learning': '#7dd3fc',
+      'creative': '#60a5fa',       // Now maps to self-care
+      'networking': '#1e3a8a',     // Now maps to side-work
+      'hobbies': '#60a5fa',        // Now maps to self-care
     };
     return colors[category] || colors.other;
   };
@@ -270,16 +287,11 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
         activeOpacity={0.8}
       >
         <Text style={styles.entryActivity} numberOfLines={1}>
-          {entry.isFromCalendar ? '📅 ' : ''}{entry.activity || entry.title}
+          {entry.activity || entry.title}
         </Text>
         <Text style={styles.entryTime} numberOfLines={1}>
           {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
         </Text>
-        {entry.moodRating && (
-          <Text style={styles.entryMood}>
-            {getMoodEmoji(entry.moodRating)}
-          </Text>
-        )}
       </TouchableOpacity>
     );
   };
@@ -384,7 +396,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
     },
     timeLabels: {
       width: TIME_LABEL_WIDTH,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.background,
       borderRightWidth: 1,
       borderRightColor: theme.colors.border,
     },

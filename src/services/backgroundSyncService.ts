@@ -156,17 +156,24 @@ class BackgroundSyncService {
 
       // Process each event
       const processedEvents: CalendarTimeEntry[] = [];
+      let skippedCount = 0;
       
       for (const event of events) {
         try {
           const processedEvent = await eventCategorizationService.transformCalendarEvent(event);
-          processedEvents.push(processedEvent);
-          result.newEvents++;
+          if (processedEvent) {
+            processedEvents.push(processedEvent);
+            result.newEvents++;
+          } else {
+            skippedCount++;
+          }
         } catch (error) {
           console.error('❌ Failed to process event:', event.summary, error);
           result.errors.push(`Failed to process event: ${event.summary}`);
         }
       }
+
+      console.log(`📅 Processed ${processedEvents.length} events (skipped ${skippedCount} all-day events)`);
 
       // Save events to local storage
       if (processedEvents.length > 0) {

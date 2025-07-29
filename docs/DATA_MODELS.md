@@ -708,16 +708,11 @@ export type EmotionKey = typeof EMOTIONS[number]['key'];
 ### Activity Categories
 ```typescript
 export const ACTIVITY_CATEGORIES = [
-  { key: 'work', label: 'Work', color: '#3B82F6' },
-  { key: 'meetings', label: 'Meetings', color: '#8B5CF6' },
-  { key: 'learning', label: 'Learning', color: '#10B981' },
-  { key: 'exercise', label: 'Exercise', color: '#F59E0B' },
-  { key: 'social', label: 'Social', color: '#EF4444' },
-  { key: 'personal', label: 'Personal', color: '#6B7280' },
-  { key: 'health', label: 'Health', color: '#14B8A6' },
-  { key: 'creative', label: 'Creative', color: '#F97316' },
-  { key: 'household', label: 'Household', color: '#84CC16' },
-  { key: 'relaxation', label: 'Relaxation', color: '#06B6D4' }
+  { key: 'work', label: 'Work', color: '#0f172a' },
+  { key: 'side-work', label: 'Side Work', color: '#1e3a8a' },
+  { key: 'social', label: 'Social', color: '#3b82f6' },
+  { key: 'self-care', label: 'Self Care', color: '#60a5fa' },
+  { key: 'other', label: 'Other', color: '#87ceeb' }
 ] as const;
 
 export type ActivityCategoryKey = typeof ACTIVITY_CATEGORIES[number]['key'];

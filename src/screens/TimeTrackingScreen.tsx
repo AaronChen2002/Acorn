@@ -228,7 +228,7 @@ export const TimeTrackingScreen: React.FC = () => {
     },
     header: {
       padding: theme.spacing.lg,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.background,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
       flexDirection: 'row',
@@ -266,17 +266,13 @@ export const TimeTrackingScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ViewModeSwitcher
-        currentMode={viewMode}
-        onModeChange={handleViewModeChange}
-      />
-
       <CalendarHeader
         selectedDate={selectedDate}
         viewMode={viewMode}
         onPreviousPress={handlePreviousPress}
         onNextPress={handleNextPress}
         onTodayPress={handleTodayPress}
+        onViewModeChange={handleViewModeChange}
       />
 
       <View style={styles.calendarContainer}>

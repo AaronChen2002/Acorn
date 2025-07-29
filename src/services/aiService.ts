@@ -9,20 +9,10 @@ const openai = new OpenAI({
 // Predefined activity categories
 export const ACTIVITY_CATEGORIES = [
   'Work',
-  'Exercise',
+  'Side Work',
   'Social',
-  'Learning',
-  'Creative',
-  'Health',
-  'Household',
-  'Entertainment',
-  'Travel',
-  'Personal Care',
-  'Family',
-  'Hobbies',
-  'Spiritual',
-  'Volunteer',
-  'General'
+  'Self Care',
+  'Other'
 ] as const;
 
 export type ActivityCategory = typeof ACTIVITY_CATEGORIES[number];
@@ -137,6 +127,13 @@ export class AIService {
       const prompt = `
 Categorize this activity into one of these categories: ${ACTIVITY_CATEGORIES.join(', ')}.
 
+Category Guidelines:
+- Work: Main job responsibilities, meetings, deep work, emails, professional tasks
+- Side Work: Freelance projects, consulting, personal business ventures, secondary income activities, networking, professional relationship building, industry events, business socializing, career-focused connections
+- Social: Personal relationships, hanging out with friends/family, casual social activities
+- Self Care: Exercise, meditation, reading, health appointments, personal wellness, sleep, breaks, hobbies, creative pursuits, personal interests, recreational activities, entertainment, learning for fun
+- Other: Travel, errands, household tasks, anything that doesn't fit the above categories
+
 Activity: "${activityName}"
 ${description ? `Description: "${description}"` : ''}
 
@@ -147,9 +144,9 @@ Please respond with a JSON object containing:
 
 Example response:
 {
-  "category": "Exercise",
+  "category": "Self Care",
   "confidence": 0.9,
-  "reasoning": "This appears to be a physical fitness activity"
+  "reasoning": "Exercise is a wellness activity focused on physical health"
 }`;
 
       const response = await openai.chat.completions.create({
@@ -500,7 +497,7 @@ Icons:
       return { category: 'Work', confidence: 0.6 };
     }
     if (text.includes('exercise') || text.includes('gym') || text.includes('run') || text.includes('yoga')) {
-      return { category: 'Exercise', confidence: 0.6 };
+      return { category: 'Self Care', confidence: 0.6 };
     }
     if (text.includes('read') || text.includes('study') || text.includes('learn')) {
       return { category: 'Learning', confidence: 0.6 };
@@ -512,7 +509,7 @@ Icons:
       return { category: 'Social', confidence: 0.6 };
     }
     
-    return { category: 'General', confidence: 0.3 };
+    return { category: 'Other', confidence: 0.3 };
   }
 
   private fallbackPrompt(): PersonalizedPromptResult {

@@ -11,6 +11,8 @@ import { CalendarTimeEntry } from '../types/calendar';
 import { DAILY_PROMPTS } from '../constants';
 import { aiService } from '../services/aiService';
 import { databaseService } from '../services/database';
+import { authService, AcornUser } from '../services/authService';
+import { cloudDatabaseService } from '../services/cloudDatabase';
 import {
   generateDataHash,
   getTimePeriodBounds,
@@ -27,7 +29,13 @@ interface AppState {
   timeEntries: TimeEntry[];
   insights: Insight[];
 
-  // Morning Check-in State (New)
+  // Authentication State (New)
+  currentUser: AcornUser | null;
+  isAuthenticated: boolean;
+  authLoading: boolean;
+  authError: string | null;
+
+  // Morning Check-in State (Enhanced)
   morningCheckIn: MorningCheckInState;
 
   // UI State
@@ -37,11 +45,29 @@ interface AppState {
   error: string | null;
   isFirstTimeUser: boolean;
 
+  // Cloud Sync State (New)
+  syncStatus: {
+    lastSyncAt: Date | null;
+    isSyncing: boolean;
+    syncError: string | null;
+    pendingChanges: number;
+  };
+
   // Settings
   theme: 'light' | 'dark';
   reminderEnabled: boolean;
   reminderTime: string;
-  testMode: boolean; // When true, AI doesn't use real user data for learning
+  testMode: boolean;
+
+  // Authentication Actions (New)
+  signIn: () => Promise<{ success: boolean; error?: string }>;
+  signOut: () => Promise<void>;
+  initializeAuth: () => Promise<void>;
+
+  // Cloud Sync Actions (New)
+  syncToCloud: () => Promise<{ success: boolean; error?: string }>;
+  syncFromCloud: () => Promise<{ success: boolean; error?: string }>;
+  enableCloudSync: (enable: boolean) => void;
 
   // Actions
   setSelectedDate: (date: Date) => void;
@@ -49,7 +75,7 @@ interface AppState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 
-  // Data actions
+  // Data actions (Enhanced with cloud sync)
   addCheckIn: (checkIn: Omit<EmotionalCheckIn, 'id' | 'created_at'>) => void;
   updateCheckIn: (id: string, updates: Partial<EmotionalCheckIn>) => void;
   deleteCheckIn: (id: string) => void;
@@ -70,8 +96,8 @@ interface AppState {
   invalidateInsightCache: (timePeriod?: 'week' | 'month' | 'quarter') => Promise<void>;
   clearOldInsights: (olderThanDays: number) => Promise<void>;
 
-  // Morning Check-in Actions (Enhanced for Phase 3)
-  completeMorningCheckIn: (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => void;
+  // Morning Check-in Actions (Enhanced with cloud sync)
+  completeMorningCheckIn: (data: Omit<MorningCheckInData, 'id' | 'completedAt'>) => Promise<void>;
   shouldShowMorningModal: () => boolean;
   resetMorningCheckIn: () => void;
   getCurrentPrompt: () => string;
@@ -80,7 +106,7 @@ interface AppState {
   setModalVisibility: (visible: boolean) => void;
   checkForNewDay: () => void;
   initializeMorningCheckIn: () => Promise<boolean>;
-  markUserAsExperienced: () => void;
+  markUserAsExperienced: () => Promise<void>;
 
   // Getters
   getCheckInByDate: (date: Date) => EmotionalCheckIn | undefined;
@@ -94,7 +120,6 @@ interface AppState {
   setReminderEnabled: (enabled: boolean) => void;
   setReminderTime: (time: string) => void;
   setTestMode: (enabled: boolean) => void;
-  markUserAsExperienced: () => void;
 }
 
 // Centralized ID generation utility
@@ -163,6 +188,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   timeEntries: [],
   insights: [],
 
+  // Authentication state (New)
+  currentUser: null,
+  isAuthenticated: false,
+  authLoading: false,
+  authError: null,
+
   // Morning Check-in initial state
   morningCheckIn: {
     isCompleted: false,
@@ -175,10 +206,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     aiPromptDate: null,
   },
   
-  // Track if this is a first-time user (check localStorage)
-  isFirstTimeUser: typeof window !== 'undefined' 
-    ? !localStorage.getItem('acorn_user_experienced') 
-    : true,
+  // Check authentication state to determine first-time status
+  isFirstTimeUser: true, // Will be updated during auth initialization
+
+  // Cloud sync state (New)
+  syncStatus: {
+    lastSyncAt: null,
+    isSyncing: false,
+    syncError: null,
+    pendingChanges: 0,
+  },
 
   selectedDate: new Date(),
   currentScreen: 'TimeTracking',
@@ -188,7 +225,171 @@ export const useAppStore = create<AppState>((set, get) => ({
   theme: 'dark',
   reminderEnabled: true,
   reminderTime: '18:00',
-  testMode: true, // Default to test mode until ready for production
+  testMode: true,
+
+  // Authentication Actions (New)
+  signIn: async () => {
+    set({ authLoading: true, authError: null });
+    
+    try {
+      const result = await authService.signIn();
+      
+      if (result.success && result.user) {
+        set({ 
+          currentUser: result.user, 
+          isAuthenticated: true,
+          isFirstTimeUser: result.user.isFirstTimeUser,
+          authLoading: false 
+        });
+        
+        // Trigger sync after successful authentication
+        get().syncFromCloud();
+        
+        return { success: true };
+      } else {
+        set({ 
+          authError: result.error || 'Authentication failed', 
+          authLoading: false 
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      set({ authError: errorMessage, authLoading: false });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  signOut: async () => {
+    set({ authLoading: true });
+    
+    try {
+      await authService.signOut();
+      set({ 
+        currentUser: null, 
+        isAuthenticated: false,
+        isFirstTimeUser: true,
+        authLoading: false,
+        syncStatus: {
+          lastSyncAt: null,
+          isSyncing: false,
+          syncError: null,
+          pendingChanges: 0,
+        }
+      });
+    } catch (error) {
+      console.error('Sign out error:', error);
+      set({ authLoading: false });
+    }
+  },
+
+  initializeAuth: async () => {
+    set({ authLoading: true });
+    
+    // Listen for auth state changes
+    authService.onAuthStateChanged((user) => {
+      set({ 
+        currentUser: user, 
+        isAuthenticated: !!user,
+        isFirstTimeUser: user?.isFirstTimeUser ?? true,
+        authLoading: false 
+      });
+      
+      // If user is authenticated, sync data
+      if (user) {
+        get().syncFromCloud();
+      }
+    });
+  },
+
+  // Cloud Sync Actions (New)
+  syncToCloud: async () => {
+    const state = get();
+    if (!state.isAuthenticated || state.syncStatus.isSyncing) {
+      return { success: false, error: 'Not authenticated or already syncing' };
+    }
+
+    set({ 
+      syncStatus: { 
+        ...state.syncStatus, 
+        isSyncing: true, 
+        syncError: null 
+      } 
+    });
+
+    try {
+      // Sync all local data to cloud
+      const result = await cloudDatabaseService.syncAllLocalDataToCloud();
+      
+      set({ 
+        syncStatus: { 
+          lastSyncAt: new Date(),
+          isSyncing: false,
+          syncError: result.errors.length > 0 ? result.errors.join(', ') : null,
+          pendingChanges: 0
+        } 
+      });
+
+      return { success: result.success, error: result.errors.join(', ') || undefined };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Sync failed';
+      set({ 
+        syncStatus: { 
+          ...state.syncStatus, 
+          isSyncing: false, 
+          syncError: errorMessage 
+        } 
+      });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  syncFromCloud: async () => {
+    const state = get();
+    if (!state.isAuthenticated || state.syncStatus.isSyncing) {
+      return { success: false, error: 'Not authenticated or already syncing' };
+    }
+
+    set({ 
+      syncStatus: { 
+        ...state.syncStatus, 
+        isSyncing: true, 
+        syncError: null 
+      } 
+    });
+
+    try {
+      // For now, just update the sync status
+      // Full sync implementation would load data from cloud
+      console.log('🔄 Syncing data from cloud...');
+      
+      set({ 
+        syncStatus: { 
+          lastSyncAt: new Date(),
+          isSyncing: false,
+          syncError: null,
+          pendingChanges: 0
+        } 
+      });
+
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Sync failed';
+      set({ 
+        syncStatus: { 
+          ...state.syncStatus, 
+          isSyncing: false, 
+          syncError: errorMessage 
+        } 
+      });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  enableCloudSync: (enable: boolean) => {
+    // Toggle cloud sync if needed
+    console.log('Cloud sync', enable ? 'enabled' : 'disabled');
+  },
 
   // UI Actions
   setSelectedDate: (date) => set({ selectedDate: date }),
@@ -296,22 +497,37 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // Enhanced Morning Check-in Actions (Phase 3)
-  completeMorningCheckIn: (checkInData) => {
+  completeMorningCheckIn: async (checkInData) => {
     const completedData: MorningCheckInData = {
       ...checkInData,
       id: generateId(),
       completedAt: new Date(),
     };
 
-    set((state) => ({
-      morningCheckIn: {
-        ...state.morningCheckIn,
-        isCompleted: true,
-        completedAt: new Date(),
-        data: completedData,
-        shouldShowModal: false,
-      },
-    }));
+    try {
+      // Save to local database
+      await databaseService.saveMorningCheckIn(completedData);
+      
+      // Save to cloud if authenticated
+      if (get().isAuthenticated) {
+        await cloudDatabaseService.saveMorningCheckIn(completedData);
+      }
+
+      set((state) => ({
+        morningCheckIn: {
+          ...state.morningCheckIn,
+          isCompleted: true,
+          completedAt: completedData.completedAt,
+          data: completedData,
+          shouldShowModal: false,
+        },
+      }));
+      
+      console.log('✅ Morning check-in completed and synced');
+    } catch (error) {
+      console.error('❌ Error completing morning check-in:', error);
+      throw error;
+    }
   },
 
   shouldShowMorningModal: () => {
@@ -726,13 +942,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTestMode: (testMode) => set({ testMode }),
   
   // Mark user as no longer first-time user
-  markUserAsExperienced: () => {
+  markUserAsExperienced: async () => {
     console.log('👋 Marking user as experienced (no longer first-time)');
     set({ isFirstTimeUser: false });
     
     // Persist this to localStorage so it persists across sessions
     if (typeof window !== 'undefined') {
       localStorage.setItem('acorn_user_experienced', 'true');
+    }
+
+    // Update cloud if authenticated
+    if (get().isAuthenticated) {
+      await authService.markUserAsExperienced();
     }
   },
 }));

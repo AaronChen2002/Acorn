@@ -228,6 +228,11 @@ class WebDatabaseService {
     
     console.log('All data cleared from localStorage');
   }
+
+  async clearCalendarData(): Promise<void> {
+    localStorage.removeItem(this.getStorageKey('calendar_time_entries'));
+    console.log('Calendar data cleared from localStorage');
+  }
 }
 
 export const webDatabaseService = new WebDatabaseService(); 

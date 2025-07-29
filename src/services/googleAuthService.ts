@@ -25,10 +25,12 @@ const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 
-// Scopes needed for Google Calendar
+// Scopes needed for unified authentication (Firebase + Google Calendar)
 const SCOPES = [
-  'https://www.googleapis.com/auth/calendar.readonly',
+  'openid',  // Required for Firebase authentication
   'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',  // Full profile info for Firebase
+  'https://www.googleapis.com/auth/calendar.readonly',  // Google Calendar access
 ];
 
 export interface GoogleTokens {
@@ -91,123 +93,89 @@ class GoogleAuthService {
       // Check if we're returning from OAuth redirect
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
-      const state = urlParams.get('state');
+      const urlState = urlParams.get('state');
       const error = urlParams.get('error');
 
       console.log('🔍 OAuth Web Debug:');
       console.log('  Current URL:', window.location.href);
-      console.log('  Code present:', !!code);
-      console.log('  State present:', !!state);
-      console.log('  Error present:', !!error);
+      console.log('  Code:', code ? 'present' : 'missing');
+      console.log('  State:', urlState ? 'present' : 'missing');
+      console.log('  Error:', error || 'none');
 
       if (error) {
-        console.error('❌ OAuth error in callback:', error);
-        // Clean up URL
-        const cleanUrl = window.location.origin + window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
         return { success: false, error: `OAuth error: ${error}` };
       }
 
-      if (code && state) {
+      if (code && urlState) {
         console.log('🔄 Processing OAuth callback...');
         
-        // Check if we have a valid code verifier
-        if (Platform.OS === 'web' && !this.codeVerifier) {
-          this.codeVerifier = localStorage.getItem('oauth_code_verifier');
+        // Verify state parameter
+        const storedState = localStorage.getItem('oauth_state');
+        if (urlState !== storedState) {
+          console.error('❌ State mismatch!');
+          return { success: false, error: 'OAuth state verification failed' };
         }
-        
-        if (!this.codeVerifier) {
-          console.warn('⚠️ Code verifier missing - this might be a stale callback, starting fresh OAuth flow');
-          
-          // Clean up stale callback and start fresh
-          const cleanUrl = window.location.origin + window.location.pathname;
-          window.history.replaceState({}, document.title, cleanUrl);
-          
-          // Fall through to start new OAuth flow below
-        } else {
-          // We have a valid code verifier, proceed with token exchange
-          const tokens = await this.exchangeCodeForTokens(code);
-          
-          if (tokens) {
-            await this.storeTokens(tokens);
-            this.tokens = tokens;
-            
-            // Fetch user info
-            const user = await this.fetchUserInfo();
-            if (user) {
-              this.user = user;
-              await this.storeUserInfo(user);
-              console.log('✅ User authenticated:', user.email);
-              
-              // Clean up the URL after successful authentication
-              const cleanUrl = window.location.origin + window.location.pathname;
-              window.history.replaceState({}, document.title, cleanUrl);
-              
-              // Add a small delay to ensure state is properly set before returning
-              await new Promise(resolve => setTimeout(resolve, 100));
-              
-              return { success: true, user };
-            }
-          }
-          
-          return { success: false, error: 'Failed to exchange tokens' };
-        }
-      }
 
-      // If we get here, we're starting a new OAuth flow
-      console.log('🚀 Starting new OAuth flow...');
-      
-      // Clean up any leftover OAuth state
-      if (Platform.OS === 'web') {
+        // Exchange code for tokens
+        const tokens = await this.exchangeCodeForTokens(code);
+        if (!tokens) {
+          return { success: false, error: 'Failed to exchange code for tokens' };
+        }
+
+        // Store tokens and fetch user info
+        await this.storeTokens(tokens);
+        this.tokens = tokens;
+
+        const user = await this.fetchUserInfo();
+        if (!user) {
+          return { success: false, error: 'Failed to fetch user information' };
+        }
+
+        await this.storeUserInfo(user);
+        this.user = user;
+
+        // Clean up OAuth state
+        localStorage.removeItem('oauth_state');
         localStorage.removeItem('oauth_code_verifier');
+
+        // Remove OAuth parameters from URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+
+        console.log('✅ OAuth authentication successful');
+        return { success: true, user };
       }
-      this.codeVerifier = null;
-      
-      // Clean up URL before starting OAuth
-      const cleanUrl = window.location.origin + window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
 
       // Start OAuth flow
-      const redirectUri = `${window.location.origin}${window.location.pathname}`;
-      const state_param = await this.generateState();
+      console.log('🚀 Starting OAuth flow...');
+      
+      const oauthState = await this.generateState();
       const codeChallenge = await this.generateCodeChallenge();
       
-      console.log('🔍 DETAILED OAuth Debug Info:');
-      console.log('================================');
-      console.log('Current URL:', window.location.href);
-      console.log('Origin:', window.location.origin);
-      console.log('Pathname:', window.location.pathname);
-      console.log('Computed Redirect URI:', redirectUri);
-      console.log('Client ID:', GOOGLE_CLIENT_ID);
-      console.log('State:', state_param);
-      console.log('Code Challenge:', codeChallenge);
-      console.log('================================');
+      // Store OAuth state for verification
+      localStorage.setItem('oauth_state', oauthState);
+      localStorage.setItem('oauth_code_verifier', this.codeVerifier!);
+
+      const params = new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID!,
+        redirect_uri: `${window.location.origin}${window.location.pathname}`,
+        response_type: 'code',
+        scope: SCOPES.join(' '),
+        state: oauthState,
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
+        access_type: 'offline', // Request refresh token
+        prompt: 'consent', // Force consent screen to ensure refresh token
+      });
+
+      const authUrl = `${GOOGLE_AUTH_URL}?${params.toString()}`;
+      console.log('🔗 Redirecting to Google OAuth:', authUrl);
       
-      const authUrl = new URL(GOOGLE_AUTH_URL);
-      authUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID!);
-      authUrl.searchParams.set('redirect_uri', redirectUri);
-      authUrl.searchParams.set('response_type', 'code');
-      authUrl.searchParams.set('scope', SCOPES.join(' '));
-      authUrl.searchParams.set('state', state_param);
-      authUrl.searchParams.set('code_challenge', codeChallenge);
-      authUrl.searchParams.set('code_challenge_method', 'S256');
-      
-      console.log('🔄 FULL OAuth URL being sent to Google:');
-      console.log(authUrl.toString());
-      console.log('🔄 Redirecting to Google OAuth...');
-      
-      // Show alert with redirect URI before redirecting
-      if (confirm(`About to redirect to Google OAuth.\n\nRedirect URI: ${redirectUri}\n\nMake sure this EXACT URI is in your Google Cloud Console!\n\nClick OK to continue, Cancel to abort.`)) {
-        window.location.href = authUrl.toString();
-      } else {
-        return { success: false, error: 'OAuth cancelled by user' };
-      }
-      
-      // This won't be reached as we're redirecting
-      return { success: false, error: 'Redirecting to Google...' };
+      window.location.href = authUrl;
+      return { success: false, error: 'Redirecting to Google OAuth' };
     } catch (error) {
-      console.error('❌ Web OAuth error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Authentication failed' };
+      console.error('❌ OAuth Web authentication error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'OAuth authentication failed' };
     }
   }
 
@@ -314,6 +282,9 @@ class GoogleAuthService {
       console.log('🔍 Token Exchange Response:');
       console.log('  Status:', response.status);
       console.log('  Response:', data);
+      console.log('  Access token present:', !!data.access_token);
+      console.log('  Refresh token present:', !!data.refresh_token);
+      console.log('  Expires in:', data.expires_in);
       
       if (response.ok) {
         const tokens: GoogleTokens = {
@@ -321,13 +292,19 @@ class GoogleAuthService {
           expires_at: Date.now() + (data.expires_in * 1000),
         };
         
+        console.log('✅ Tokens exchanged successfully');
+        console.log('  Final tokens object:', {
+          access_token_length: tokens.access_token.length,
+          refresh_token_present: !!tokens.refresh_token,
+          expires_at: new Date(tokens.expires_at).toISOString()
+        });
+        
         // Clean up code verifier after successful exchange
         if (Platform.OS === 'web') {
           localStorage.removeItem('oauth_code_verifier');
         }
         this.codeVerifier = null;
         
-        console.log('✅ Tokens exchanged successfully');
         return tokens;
       } else {
         console.error('❌ Token exchange failed:', data);
@@ -446,13 +423,20 @@ class GoogleAuthService {
    * Check if user is authenticated
    */
   isAuthenticated(): boolean {
-    return this.tokens !== null && this.user !== null;
+    const authenticated = this.tokens !== null && this.user !== null;
+    console.log('🔍 Google OAuth isAuthenticated called');
+    console.log('  Tokens:', this.tokens ? 'present' : 'null');
+    console.log('  User:', this.user ? this.user.email : 'null');
+    console.log('  Result:', authenticated);
+    return authenticated;
   }
 
   /**
    * Get current user
    */
   getCurrentUser(): GoogleUser | null {
+    console.log('🔍 Google OAuth getCurrentUser called');
+    console.log('  User:', this.user ? this.user.email : 'null');
     return this.user;
   }
 
@@ -492,12 +476,18 @@ class GoogleAuthService {
    */
   private async storeTokens(tokens: GoogleTokens): Promise<void> {
     try {
+      console.log('💾 Storing Google OAuth tokens');
+      console.log('  Access token length:', tokens.access_token.length);
+      console.log('  Expires at:', new Date(tokens.expires_at).toISOString());
+      
       if (Platform.OS === 'web') {
         // For web, use localStorage (in production, consider more secure options)
         localStorage.setItem('google_tokens', JSON.stringify(tokens));
+        console.log('✅ Tokens stored in localStorage');
       } else {
         // For mobile, use secure storage
         await SecureStore.setItemAsync('google_tokens', JSON.stringify(tokens));
+        console.log('✅ Tokens stored in SecureStore');
       }
     } catch (error) {
       console.error('❌ Failed to store tokens:', error);
@@ -509,10 +499,16 @@ class GoogleAuthService {
    */
   private async storeUserInfo(user: GoogleUser): Promise<void> {
     try {
+      console.log('💾 Storing Google user info');
+      console.log('  User email:', user.email);
+      console.log('  User name:', user.name);
+      
       if (Platform.OS === 'web') {
         localStorage.setItem('google_user', JSON.stringify(user));
+        console.log('✅ User info stored in localStorage');
       } else {
         await SecureStore.setItemAsync('google_user', JSON.stringify(user));
+        console.log('✅ User info stored in SecureStore');
       }
     } catch (error) {
       console.error('❌ Failed to store user info:', error);
@@ -524,7 +520,7 @@ class GoogleAuthService {
    */
   private async loadStoredTokens(): Promise<void> {
     try {
-      console.log('🔄 Loading stored tokens...');
+      console.log('🔄 Loading stored Google OAuth tokens...');
       
       let tokensJson: string | null = null;
       let userJson: string | null = null;
@@ -532,48 +528,75 @@ class GoogleAuthService {
       if (Platform.OS === 'web') {
         tokensJson = localStorage.getItem('google_tokens');
         userJson = localStorage.getItem('google_user');
+        console.log('📦 Web localStorage tokens:', tokensJson ? 'found' : 'not found');
+        console.log('📦 Web localStorage user:', userJson ? 'found' : 'not found');
       } else {
         tokensJson = await SecureStore.getItemAsync('google_tokens');
         userJson = await SecureStore.getItemAsync('google_user');
+        console.log('📦 Mobile SecureStore tokens:', tokensJson ? 'found' : 'not found');
+        console.log('📦 Mobile SecureStore user:', userJson ? 'found' : 'not found');
       }
 
       if (tokensJson) {
         this.tokens = JSON.parse(tokensJson);
         console.log('✅ Loaded stored tokens');
+        console.log('  Token expires at:', new Date(this.tokens!.expires_at).toISOString());
       } else {
         console.log('⚠️ No stored tokens found');
       }
       
       if (userJson) {
         this.user = JSON.parse(userJson);
-        console.log('✅ Loaded stored user:', this.user.email);
+        console.log('✅ Loaded stored user info');
+        console.log('  User email:', this.user!.email);
       } else {
-        console.log('⚠️ No stored user found');
+        console.log('⚠️ No stored user info found');
       }
-
-      if (this.tokens && this.user) {
-        console.log('✅ Stored authentication loaded for:', this.user.email);
-      }
+      
+      console.log('🔄 Token loading complete');
+      console.log('  Final state - tokens:', this.tokens ? 'present' : 'null');
+      console.log('  Final state - user:', this.user ? this.user.email : 'null');
     } catch (error) {
-      console.error('❌ Failed to load stored data:', error);
+      console.error('❌ Error loading stored tokens:', error);
     }
   }
 
   /**
-   * Clear all stored data
+   * Clear stored data
    */
   private async clearStoredData(): Promise<void> {
     try {
+      console.log('🧹 Clearing stored Google OAuth data...');
+      
       if (Platform.OS === 'web') {
         localStorage.removeItem('google_tokens');
         localStorage.removeItem('google_user');
+        localStorage.removeItem('oauth_state');
+        localStorage.removeItem('oauth_code_verifier');
+        console.log('✅ Cleared localStorage data');
       } else {
         await SecureStore.deleteItemAsync('google_tokens');
         await SecureStore.deleteItemAsync('google_user');
+        console.log('✅ Cleared SecureStore data');
       }
+      
+      this.tokens = null;
+      this.user = null;
+      this.codeVerifier = null;
+      
+      console.log('✅ Stored data cleared');
     } catch (error) {
-      console.error('❌ Failed to clear stored data:', error);
+      console.error('❌ Error clearing stored data:', error);
     }
+  }
+
+  /**
+   * Force clear authentication (for testing)
+   */
+  async forceClearAuth(): Promise<void> {
+    console.log('🔄 Force clearing authentication...');
+    await this.clearStoredData();
+    console.log('✅ Authentication cleared');
   }
 
   /**

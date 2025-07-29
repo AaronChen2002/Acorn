@@ -417,7 +417,7 @@ export const ActivityCreationModal: React.FC<ActivityCreationModalProps> = ({
                 {isEditing ? 'Edit Activity' : 'New Activity'}
               </Text>
               <Text style={styles.timeSlot}>
-                📅 {getTimeSlotDisplay()}
+                {getTimeSlotDisplay()}
               </Text>
             </View>
 

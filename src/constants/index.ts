@@ -16,17 +16,11 @@ export const EMOTIONS = [
 
 // Activity categories for time tracking
 export const ACTIVITY_CATEGORIES = [
-  { key: 'deep-work', label: 'Deep Work', color: '#6366f1' },
-  { key: 'social', label: 'Social', color: '#ec4899' },
-  { key: 'networking', label: 'Networking', color: '#8b5cf6' },
-  { key: 'interview', label: 'Interview', color: '#f59e0b' },
-  { key: 'travel', label: 'Travel', color: '#06b6d4' },
-  { key: 'reading-emails', label: 'Reading/Emails', color: '#10b981' },
-  { key: 'break', label: 'Break', color: '#84cc16' },
-  { key: 'exercise', label: 'Exercise', color: '#ef4444' },
-  { key: 'learning', label: 'Learning', color: '#f97316' },
-  { key: 'creative', label: 'Creative', color: '#06b6d4' },
-  { key: 'other', label: 'Other', color: '#6b7280' },
+  { key: 'work', label: 'Work', color: '#1e293b' },           // Dark blue (lighter than before)
+  { key: 'side-work', label: 'Side Work', color: '#1e3a8a' }, // Dark blue
+  { key: 'social', label: 'Social', color: '#3b82f6' },       // Blue
+  { key: 'self-care', label: 'Self Care', color: '#60a5fa' }, // Light blue
+  { key: 'other', label: 'Other', color: '#7dd3fc' },         // Sky blue (darker than before)
 ];
 
 // Tag suggestions for daily reflections

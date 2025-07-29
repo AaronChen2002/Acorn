@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { ViewMode, formatWeekRange, formatMonthYear } from '../types/calendar';
 import { useTheme } from '../utils/theme';
+import { ViewModeSwitcher } from './ViewModeSwitcher';
 
 interface CalendarHeaderProps {
   selectedDate: Date;
@@ -14,6 +15,7 @@ interface CalendarHeaderProps {
   onPreviousPress: () => void;
   onNextPress: () => void;
   onTodayPress: () => void;
+  onViewModeChange: (mode: ViewMode) => void;
 }
 
 export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
@@ -22,6 +24,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   onPreviousPress,
   onNextPress,
   onTodayPress,
+  onViewModeChange,
 }) => {
   const { theme } = useTheme();
 
@@ -61,14 +64,17 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
       justifyContent: 'space-between',
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.sm,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.background,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+      position: 'relative', // For absolute positioning of view switcher
     },
-    navigationContainer: {
+    titleSection: {
       flexDirection: 'row',
       alignItems: 'center',
-      flex: 1,
+      justifyContent: 'center',
+      flex: 1, // Take up most of the space
+      position: 'relative',
     },
     navigationButton: {
       width: 40,
@@ -77,16 +83,24 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: `${theme.colors.primary}20`,
+      position: 'absolute',
+      zIndex: 1,
     },
     navigationIcon: {
       fontSize: 24,
       fontWeight: 'bold',
       color: theme.colors.primary,
     },
+    viewSwitcherContainer: {
+      position: 'absolute',
+      left: theme.spacing.md + 50, // Position after left arrow
+      top: '50%',
+      transform: [{ translateY: -12 }], // Center vertically
+      zIndex: 1,
+    },
     titleContainer: {
-      flex: 1,
       alignItems: 'center',
-      paddingHorizontal: theme.spacing.md,
+      paddingHorizontal: 60, // Space for arrows on both sides
     },
     title: {
       fontSize: 18,
@@ -109,9 +123,9 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.navigationContainer}>
+      <View style={styles.titleSection}>
         <TouchableOpacity
-          style={styles.navigationButton}
+          style={[styles.navigationButton, { left: 0 }]}
           onPress={onPreviousPress}
           activeOpacity={0.7}
         >
@@ -123,12 +137,19 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({
         </View>
 
         <TouchableOpacity
-          style={styles.navigationButton}
+          style={[styles.navigationButton, { right: 0 }]}
           onPress={onNextPress}
           activeOpacity={0.7}
         >
           <Text style={styles.navigationIcon}>›</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.viewSwitcherContainer}>
+        <ViewModeSwitcher
+          currentMode={viewMode}
+          onModeChange={onViewModeChange}
+        />
       </View>
 
       <TouchableOpacity

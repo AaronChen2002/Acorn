@@ -28,9 +28,10 @@ class EventCategorizationService {
     { pattern: /meeting|call|standup|sync|review|presentation|conference|workshop/i, category: 'deep-work', confidence: 0.8 },
     { pattern: /sprint|scrum|retrospective|planning|demo/i, category: 'deep-work', confidence: 0.9 },
     
-    // Networking patterns (check after interview to avoid conflicts)
-    { pattern: /<>|<->|x|with|meet|catch up|coffee|drinks|lunch|dinner/i, category: 'networking', confidence: 0.8 },
-    { pattern: /networking|connect|introduction|referral|mentor|advisor/i, category: 'networking', confidence: 0.9 },
+    // Side work patterns (includes networking)
+    { pattern: /<>|<->|x|with|meet|catch up|coffee|drinks|lunch|dinner/i, category: 'side-work', confidence: 0.8 },
+    { pattern: /networking|connect|introduction|referral|mentor|advisor/i, category: 'side-work', confidence: 0.9 },
+    { pattern: /freelance|consulting|contract|project|client/i, category: 'side-work', confidence: 0.8 },
     
     // Social patterns
     { pattern: /party|birthday|celebration|date|hangout|friend|family/i, category: 'social', confidence: 0.8 },
@@ -44,15 +45,17 @@ class EventCategorizationService {
     // Break patterns
     { pattern: /break|rest|pause|lunch break|coffee break/i, category: 'break', confidence: 0.8 },
     
-    // Exercise patterns  
-    { pattern: /gym|workout|exercise|run|bike|yoga|fitness|training|sports/i, category: 'exercise', confidence: 0.9 },
-    { pattern: /basketball|tennis|swimming|hiking|climbing/i, category: 'exercise', confidence: 0.8 },
+    // Self care patterns (includes exercise and hobbies)
+    { pattern: /gym|workout|exercise|run|bike|yoga|fitness|training|sports/i, category: 'self-care', confidence: 0.9 },
+    { pattern: /basketball|tennis|swimming|hiking|climbing/i, category: 'self-care', confidence: 0.8 },
+    { pattern: /hobby|creative|art|music|craft|game|entertainment|fun/i, category: 'self-care', confidence: 0.8 },
+    { pattern: /meditation|mindfulness|wellness|health|therapy/i, category: 'self-care', confidence: 0.9 },
     
     // Learning patterns
     { pattern: /class|course|training|workshop|seminar|lecture|study|tutorial|certification|exam/i, category: 'learning', confidence: 0.8 },
     
     // Creative patterns
-    { pattern: /creative|design|art|music|writing|drawing|painting|photography/i, category: 'creative', confidence: 0.8 },
+    { pattern: /creative|design|art|writing|music|photography|drawing/i, category: 'creative', confidence: 0.8 },
   ];
 
   // Rule-based categorization (fast fallback)
@@ -72,8 +75,8 @@ class EventCategorizationService {
   // AI-powered categorization
   async aiCategorization(title: string, description?: string, location?: string): Promise<{ category: string; confidence: number }> {
     const validCategories = [
-      'deep-work', 'social', 'networking', 'interview', 'travel', 'reading-emails', 
-      'break', 'exercise', 'learning', 'creative', 'other'
+      'deep-work', 'social', 'side-work', 'interview', 'travel', 'reading-emails', 
+      'break', 'self-care', 'learning', 'creative', 'other'
     ];
 
     const prompt = `Categorize this calendar event into ONE of these categories:
@@ -85,14 +88,15 @@ ${location ? `Location: "${location}"` : ''}
 
 Consider the context carefully. For example:
 - "Mike x Aaron - Intern Interview" = interview (interview takes priority)
-- "Aaron <> Franklin" or "Aaron x Mike" = networking
+- "Aaron <> Franklin" or "Aaron x Mike" = side-work (networking is now part of side work)
 - "Coffee with Sarah" = social
 - "Technical Interview" = interview
 - "Flight to NYC" = travel
 - "Email catchup" = reading-emails
 - "Team Standup" = deep-work
-- "Gym Session" = exercise
-- "Creative writing" = creative
+- "Gym Session" = self-care (exercise is now part of self care)
+- "Creative writing" = self-care (hobbies are now part of self care)
+- "Freelance project meeting" = side-work
 
 IMPORTANT: If the title contains "interview" or "intern", categorize as "interview" regardless of other patterns.
 
@@ -128,14 +132,18 @@ Return ONLY the category name, nothing else.`;
   }
 
   // Transform Google Calendar event to Acorn format
-  async transformCalendarEvent(event: GoogleCalendarEvent): Promise<CalendarTimeEntry> {
+  async transformCalendarEvent(event: GoogleCalendarEvent): Promise<CalendarTimeEntry | null> {
+    // Skip all-day events - they clutter the calendar view and aren't relevant for time tracking
+    if (event.start.date && !event.start.dateTime) {
+      console.log(`⏭️ Skipping all-day event: ${event.summary}`);
+      return null;
+    }
+
     const startTime = new Date(event.start.dateTime || event.start.date || '');
     const endTime = new Date(event.end.dateTime || event.end.date || '');
     
-    // Handle all-day events
-    const duration = event.start.date 
-      ? 24 * 60 // All-day event = 24 hours
-      : Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60)); // Duration in minutes
+    // Calculate duration in minutes for timed events only
+    const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
 
     const category = await this.categorizeEvent(event);
 
@@ -180,19 +188,25 @@ Return ONLY the category name, nothing else.`;
     console.log(`📊 Categorizing ${events.length} calendar events...`);
     
     const transformedEvents: CalendarTimeEntry[] = [];
+    let skippedCount = 0;
     
     for (const event of events) {
       try {
         const transformed = await this.transformCalendarEvent(event);
-        transformedEvents.push(transformed);
+        if (transformed) {
+          transformedEvents.push(transformed);
+        } else {
+          skippedCount++;
+        }
       } catch (error) {
         console.error(`❌ Failed to transform event: ${event.summary}`, error);
       }
     }
     
-    console.log(`✅ Successfully categorized ${transformedEvents.length} events`);
+    console.log(`✅ Successfully categorized ${transformedEvents.length} events (skipped ${skippedCount} all-day events)`);
     return transformedEvents;
   }
 }
 
-export const eventCategorizationService = EventCategorizationService.getInstance(); 
+// Export singleton instance
+export const eventCategorizationService = EventCategorizationService.getInstance();

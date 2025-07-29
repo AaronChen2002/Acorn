@@ -24,9 +24,9 @@ interface CalendarGridProps {
   onEntryPress: (entry: CalendarTimeEntry) => void;
 }
 
-const SLOT_HEIGHT = 30; // Height of each 15-minute slot (reduced from 60)
+const SLOT_HEIGHT = 15; // Height of each 15-minute slot (reduced to match week view zoom level)
 const HOUR_SLOTS = 4; // Number of 15-minute slots per hour
-const TIME_LABEL_WIDTH = 80;
+const TIME_LABEL_WIDTH = 60; // Reduced from 80 to match week view
 const GRID_START_HOUR = 6;
 const GRID_END_HOUR = 24; // Extended to 24:00 (12 AM)
 
@@ -44,13 +44,25 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   const [dragStart, setDragStart] = useState<Date | null>(null);
   const [dragCurrent, setDragCurrent] = useState<Date | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const hasAutoScrolled = useRef(false);
+  const currentDate = useRef(date.toDateString());
 
   const timeSlots = generateTimeSlots(date, GRID_START_HOUR, GRID_END_HOUR, 15);
 
-  // Auto-scroll to current time when viewing today
+  // Auto-scroll to current time when viewing today - only on initial load or date change
   useEffect(() => {
     const today = new Date();
-    if (date.toDateString() === today.toDateString()) {
+    const dateString = date.toDateString();
+    const isToday = dateString === today.toDateString();
+    const dateChanged = currentDate.current !== dateString;
+    
+    // Only auto-scroll if:
+    // 1. It's today AND we haven't auto-scrolled yet, OR
+    // 2. The date actually changed
+    if ((isToday && !hasAutoScrolled.current) || dateChanged) {
+      currentDate.current = dateString;
+      
+      if (isToday) {
       const currentY = getYFromTime(today);
       const scrollY = Math.max(0, currentY - 100); // Offset by 100px to show some context above
       
@@ -59,7 +71,9 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
           y: scrollY,
           animated: true,
         });
+          hasAutoScrolled.current = true;
       }, 500); // Small delay to ensure component is fully rendered
+      }
     }
   }, [date]);
 
@@ -207,33 +221,33 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
         activeOpacity={0.8}
       >
         <Text style={styles.entryActivity} numberOfLines={1}>
-          {entry.isFromCalendar ? '📅 ' : ''}{entry.activity || entry.title}
+          {entry.activity || entry.title}
         </Text>
         <Text style={styles.entryTime}>
           {formatTime(entry.startTime)} - {formatTime(entry.endTime)}
         </Text>
-        {entry.moodRating && (
-          <Text style={styles.entryMood}>
-            {getMoodEmoji(entry.moodRating)}
-          </Text>
-        )}
       </TouchableOpacity>
     );
   };
 
   const getCategoryColor = (category: string): string => {
     const colors: Record<string, string> = {
-      'deep-work': '#6366f1',
-      'social': '#ec4899',
-      'networking': '#8b5cf6',
-      'interview': '#f59e0b',
-      'travel': '#06b6d4',
-      'reading-emails': '#10b981',
-      'break': '#84cc16',
-      'exercise': '#ef4444',
-      'learning': '#f97316',
-      'creative': '#06b6d4',
-      'other': '#6b7280',
+      'work': '#1e293b',           // Dark blue (lighter than before)
+      'side-work': '#1e3a8a',      // Dark blue
+      'social': '#3b82f6',         // Blue
+      'self-care': '#60a5fa',      // Light blue
+      'other': '#7dd3fc',          // Sky blue (darker than before)
+      // Legacy categories for backward compatibility
+      'deep-work': '#1e293b',
+      'interview': '#1e3a8a',
+      'travel': '#3b82f6',
+      'reading-emails': '#60a5fa',
+      'break': '#7dd3fc',
+      'exercise': '#60a5fa',       // Now maps to self-care
+      'learning': '#7dd3fc',
+      'creative': '#60a5fa',       // Now maps to self-care
+      'networking': '#1e3a8a',     // Now maps to side-work
+      'hobbies': '#60a5fa',        // Now maps to self-care
     };
     return colors[category] || colors.other;
   };
@@ -292,18 +306,19 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     },
     timeLabels: {
       width: TIME_LABEL_WIDTH,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.background,
       borderRightWidth: 1,
       borderRightColor: theme.colors.border,
     },
     timeLabelContainer: {
       height: SLOT_HEIGHT * HOUR_SLOTS,
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       alignItems: 'center',
       paddingHorizontal: theme.spacing.xs,
+      paddingTop: 2, // Align with the start of the hour slot (match week view)
     },
     timeLabel: {
-      fontSize: 12,
+      fontSize: 10,
       fontWeight: '600',
       color: theme.colors.textSecondary,
     },

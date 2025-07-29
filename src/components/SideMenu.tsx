@@ -12,8 +12,7 @@ import {
 import { useTheme } from '../utils/theme';
 import { useAppStore } from '../stores/appStore';
 import { DEV_CONFIG, ACTIVITY_CATEGORIES } from '../constants';
-import { GoogleCalendarIntegration } from './GoogleCalendarIntegration';
-import { GoogleCalendarDiagnostics } from './GoogleCalendarDiagnostics';
+import { AuthenticationPanel } from './AuthenticationPanel';
 
 interface SideMenuProps {
   isVisible: boolean;
@@ -33,8 +32,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
   const morningCheckIn = useAppStore((state) => state.morningCheckIn);
   const testMode = useAppStore((state) => state.testMode);
   const setTestMode = useAppStore((state) => state.setTestMode);
-  const [showCalendarTest, setShowCalendarTest] = useState(false);
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
+
   
   const handleNavigate = (screen: string) => {
     if (screen === 'morning') {
@@ -52,13 +50,6 @@ export const SideMenu: React.FC<SideMenuProps> = ({
   };
 
   const menuItems = [
-    {
-      id: 'timetracking',
-      title: 'Time Tracking',
-      subtitle: 'Focus and productivity',
-      icon: '⏰',
-      screen: 'timetracking',
-    },
     {
       id: 'morning',
       title: 'Morning Ritual',
@@ -216,19 +207,29 @@ export const SideMenu: React.FC<SideMenuProps> = ({
       fontWeight: '500',
       color: theme.colors.text,
     },
-    legendRow: {
+    categoriesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
+    },
+    categoryChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: theme.spacing.sm,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.borderRadius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     },
-    legendColor: {
-      width: 16,
-      height: 16,
-      borderRadius: 8,
-      marginRight: theme.spacing.sm,
+    categoryDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      marginRight: theme.spacing.xs,
     },
-    legendText: {
-      fontSize: 14,
+    categoryLabel: {
+      fontSize: 12,
       color: theme.colors.text,
       fontWeight: '500',
     },
@@ -377,19 +378,24 @@ export const SideMenu: React.FC<SideMenuProps> = ({
               <View style={styles.statusSection}>
                 <Text style={styles.statusTitle}>Calendar Categories</Text>
                 <View style={styles.statusCard}>
+                  <View style={styles.categoriesGrid}>
                   {ACTIVITY_CATEGORIES.map((category) => (
-                    <View key={category.key} style={styles.legendRow}>
+                      <View key={category.key} style={styles.categoryChip}>
                       <View 
                         style={[
-                          styles.legendColor, 
+                            styles.categoryDot, 
                           { backgroundColor: category.color }
                         ]} 
                       />
-                      <Text style={styles.legendText}>{category.label}</Text>
+                        <Text style={styles.categoryLabel}>{category.label}</Text>
                     </View>
                   ))}
+                  </View>
                 </View>
               </View>
+
+              {/* Authentication Panel */}
+              <AuthenticationPanel />
 
               {/* Morning Check-in Status */}
               {morningCheckIn.data && (
@@ -439,56 +445,13 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                   </Text>
                 </TouchableOpacity>
 
-                {/* Calendar Test Toggle */}
-                {DEV_CONFIG.MOCK_GOOGLE_CALENDAR && (
-                  <TouchableOpacity
-                    style={[styles.statusCard, { marginTop: 12 }]}
-                    onPress={() => setShowCalendarTest(!showCalendarTest)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.statusRow}>
-                      <Text style={styles.statusLabel}>📅 Calendar Test:</Text>
-                      <Text style={[styles.statusValue, { color: showCalendarTest ? '#10b981' : '#ef4444' }]}>
-                        {showCalendarTest ? 'OPEN' : 'CLOSED'}
-                      </Text>
-                    </View>
-                    <Text style={[styles.statusLabel, { fontSize: 12, marginTop: 4 }]}>
-                      Test Google Calendar integration with mock data
-                    </Text>
-                  </TouchableOpacity>
-                )}
 
-                {/* Diagnostics Toggle */}
-                <TouchableOpacity
-                  style={[styles.statusCard, { marginTop: 12 }]}
-                  onPress={() => setShowDiagnostics(!showDiagnostics)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.statusRow}>
-                    <Text style={styles.statusLabel}>🔧 Diagnostics:</Text>
-                    <Text style={[styles.statusValue, { color: showDiagnostics ? '#10b981' : '#ef4444' }]}>
-                      {showDiagnostics ? 'OPEN' : 'CLOSED'}
-                    </Text>
-                  </View>
-                  <Text style={[styles.statusLabel, { fontSize: 12, marginTop: 4 }]}>
-                    Debug Google Calendar integration issues
-                  </Text>
-                </TouchableOpacity>
+
               </View>
 
-              {/* Calendar Test Component */}
-              {showCalendarTest && (
-                <View style={styles.calendarTestSection}>
-                  <GoogleCalendarIntegration />
-                </View>
-              )}
 
-              {/* Diagnostics Component */}
-              {showDiagnostics && (
-                <View style={styles.calendarTestSection}>
-                  <GoogleCalendarDiagnostics />
-                </View>
-              )}
+
+
 
               {/* Footer */}
               <View style={styles.footer}>
